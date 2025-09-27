@@ -1,0 +1,48 @@
+# Global
+.DS_Store
+*.log
+.idea/
+.vscode/
+.env
+.env.local
+.env.*.local
+.env.test.local
+.env.production.local
+.env.stage.local
+
+# PHP / Symfony
+/vendor/
+/var/
+/public/bundles/
+/var/cache/
+/var/log/
+/var/sessions/
+.symfony5
+.php_cs.cache
+.php-cs-fixer.cache
+phpunit.xml
+phpunit.xml.cache
+
+# Node / Vite / Vue
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+pnpm-lock.yaml
+
+# Docker
+/docker/*.env
+/docker/data/
+/docker/volumes/
+
+# Coverage / Reports
+coverage/
+frontend/coverage/
+backend/coverage/
+reports/
+
+# Misc
+*.swp
+*.swo
+*.tmp
