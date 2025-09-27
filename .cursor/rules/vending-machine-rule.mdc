@@ -1,0 +1,137 @@
+---
+description: Vending Machine Project - PHP Implementation with Docker and Testing
+globs: ["**/*.php", "**/Dockerfile*", "**/docker-compose*", "**/composer.json", "**/tests/**"]
+alwaysApply: true
+---
+
+# Vending Machine Project
+
+## Project Overview
+The goal of this program is to model a vending machine and the state it must maintain during its operation. The implementation should be flexible and well-structured using PHP.
+
+## Core Requirements
+
+### Vending Machine Behavior
+- Takes money and dispenses items
+- Accepts coins: 0.05, 0.10, 0.25, and 1.00
+- Must have at least 3 primary items with specific prices:
+  - Water: $0.65
+  - Juice: $1.00  
+  - Soda: $1.50
+- Returns change when overpaid
+- Allows coin return functionality
+
+### Valid Actions
+- **Insert Money**: 0.05, 0.10, 0.25, 1.00
+- **Return Coin**: Returns all inserted money
+- **Select Item**: GET Water, GET Juice, GET Soda
+- **Service Mode**: SERVICE - allows setting available change and item inventory
+
+### Valid Responses
+- **Coins**: 0.05, 0.10, 0.25 (as change)
+- **Items**: Water, Juice, Soda (when vended)
+
+### State Management
+The vending machine must track:
+- **Available Items**: count, price, and selector for each item
+- **Available Change**: Number of each coin type available
+- **Currently Inserted Money**: Total amount inserted by user
+
+## Examples
+
+### Example 1: Exact Change Purchase
+```
+Input: 1, 0.25, 0.25, GET-SODA
+Output: SODA
+```
+
+### Example 2: Coin Return
+```
+Input: 0.10, 0.10, RETURN-COIN
+Output: 0.10, 0.10
+```
+
+### Example 3: Purchase with Change
+```
+Input: 1, GET-WATER
+Output: WATER, 0.25, 0.10
+```
+
+## Technical Requirements
+
+### Programming Language
+- **Primary**: PHP (latest stable version)
+- Use modern PHP features and best practices
+- Follow PSR standards for code formatting and autoloading
+
+### Containerization
+- **Required**: Dockerfile or docker-compose.yml
+- Make the solution easily runnable in containers
+- Include proper PHP configuration and dependencies
+
+### Testing
+- **Required**: Unit tests and integration tests
+- Use PHPUnit for testing framework
+- Test all major functionality and edge cases
+- Aim for good test coverage
+
+### Code Quality
+- Follow SOLID principles
+- Use dependency injection where appropriate
+- Implement proper error handling
+- Add comprehensive documentation
+
+## Development Guidelines
+
+### Architecture
+- Design with clear separation of concerns
+- Consider using design patterns (State, Command, etc.)
+- Make the code extensible for future features
+- Use proper namespacing and autoloading
+
+### Git Practices
+- Commit frequently with meaningful messages
+- Use conventional commit format when possible
+- Create feature branches for major changes
+- Ensure clean git history for review
+
+### Documentation
+- Create comprehensive README.md with:
+  - Setup and installation instructions
+  - How to run the solution
+  - Requirements and dependencies
+  - Usage examples
+- Add inline code documentation
+- Include API documentation if applicable
+
+### Important Notes
+- Ensure the solution is production-ready
+- Consider edge cases (insufficient change, out of stock, etc.)
+- Make the interface intuitive and user-friendly
+
+## File Structure Recommendations
+```
+/
+├── src/
+│   ├── VendingMachine.php
+│   ├── Item.php
+│   ├── Coin.php
+│   └── ...
+├── tests/
+│   ├── VendingMachineTest.php
+│   └── ...
+├── docker/
+│   └── Dockerfile
+├── docker-compose.yml
+├── composer.json
+├── README.md
+└── .gitignore
+```
+
+## Success Criteria
+- All requirements implemented and working
+- Clean, maintainable PHP code
+- Comprehensive test suite
+- Docker containerization working
+- Clear documentation
+- Good git history with frequent commits

@@ -1,0 +1,99 @@
+---
+description: Vending Machine Monolith - Vue 3 Frontend, Symfony API, MongoDB, Dockerized stack
+globs: ["frontend/**", "frontend/**/*.vue", "frontend/**/*.ts", "frontend/package.json", "frontend/vite.config.*", "backend/**", "backend/**/*.php", "backend/composer.json", "backend/symfony.lock", "docker/**", "docker-compose.yml", "docker-compose.*.yml", "**/Dockerfile*", "**/.env*", "tests/**", "Makefile", "README.md"]
+alwaysApply: true
+---
+
+# Vending Machine Monolith Project
+
+## Vision & Scope
+- Build a production-ready vending machine platform inside a single repository.
+- Ship an interactive Vue 3 SPA for customers and operators.
+- Provide a Symfony (PHP 8.4) API that exposes public endpoints for vending actions and authenticated endpoints for administration.
+- Persist operational data in MongoDB.
+- Deliver a fully dockerized solution suitable for local dev, CI, and production deployment.
+
+## Architecture Expectations
+- Folder split: `frontend/` for Vue app, `backend/` for Symfony API, `docker/` for reusable images/configuration. Keep shared assets (schemas, env templates) organized and documented.
+- Follow twelve-factor principles; configuration via environment variables and `.env.dist` templates.
+- Keep the stack monolithic from a deployment perspective: one repo, coordinated Docker Compose definitions, Makefile/CLI helpers.
+- Model the platform around Hexagonal / Ports & Adapters architecture with Domain-Driven Design principles; enforce clear separation between domain, application, and infrastructure across the backend codebase.
+
+## Frontend (Vue 3)
+- Use Vite + TypeScript + Pinia (or Vuex) for state and Vue Router for navigation.
+- Model customer flows: insert coin, return coin, select product, view balance/dispensed items; reflect backend state in real time (polling or websockets if needed).
+- Structure the SPA following vertical slices aligned with backend bounded contexts (domain-driven modules encapsulating state, services, and components).
+- Build an admin panel gated behind authentication to manage stock, review transactions, and inspect coin/change levels.
+- Maintain component-level tests (Vitest) and end-to-end smoke tests (Cypress/Playwright) for critical flows.
+
+## Backend (Symfony + PHP 8.4)
+- Structure API with clear modules: vending operations, inventory management, transactions, authentication/authorization.
+- Enforce modern Symfony conventions (messenger, dependency injection, DTO/Serializer usage). Use proper request/response validation.
+- Implement authentication (JWT or session/token based) for admin users; protect private routes with guards/middlewares and keep vending flows anonymous.
+- Provide service layer abstractions for coin handling logic, inventory adjustments, and audit trails.
+- Keep business logic framework-agnostic where practical for future portability.
+
+## Data & Persistence (MongoDB)
+- Model collections for items, coin inventory, transactions, and user accounts.
+- Supply migration/seed scripts for local bootstrap (e.g., Symfony commands or fixtures).
+- Ensure queries are indexed for vending lookups and admin reporting.
+- Include integration tests against a MongoDB test container.
+
+## Docker & Tooling
+- Provide Dockerfiles for frontend, backend, and dedicated MongoDB service; orchestrate via `docker-compose.yml` with profiles for dev/test/prod.
+- Offer helper scripts/Make targets to build images, run tests, seed data, and launch the stack.
+- Optimize production images (multi-stage builds, caching) and configure health checks.
+- Document environment variables, secrets handling, and volume usage.
+
+## API Surface
+- Public endpoints: list items, insert coins, return coins, purchase product, poll machine state.
+- Private endpoints: login/logout, manage inventory, view transaction logs, adjust coin/change reserves.
+- Enforce OpenAPI/Swagger documentation and ensure contract tests cover critical endpoints.
+
+## Quality & Testing
+- Maintain unit, integration, and end-to-end coverage across frontend and backend.
+- Use PHPUnit for backend unit/integration tests; ensure test suites run via Docker.
+- Add static analysis (PHPStan/Psalm, ESLint, Stylelint) and formatting (Prettier, PHP-CS-Fixer).
+- Set up CI-ready scripts to run linters, tests, and build checks.
+
+## Security & Resilience
+- Centralize secrets via environment variables and `.env.dist` templates; document rotation strategy for JWT/refresh keys.
+- Apply rate limiting, request validation, and CORS hardening on public API endpoints.
+- Log security-relevant events (admin logins, configuration changes) with traceability.
+- Implement graceful degradation for backend/DB downtime; expose meaningful error codes/messages to the frontend and capture them in monitoring.
+- Define timeout/cancellation policies for vending sessions and frontend requests to handle network issues cleanly.
+
+## Internationalization
+- Prepare the Vue app for i18n (baseline locale files, currency/number formatting helpers).
+- Keep backend responses locale-aware where appropriate (messages, currency) and avoid hard-coded strings.
+- Document how to add new locales and keep translation keys synchronized across frontend/backend.
+
+## Documentation & DX
+- Comprehensive README: architecture map, setup steps, commands, deployment notes, troubleshooting.
+- Add ADRs or docs to capture key architectural decisions (auth, Mongo schema, deployment strategy).
+- Provide example `.env` files and explain secret management.
+
+## Domain Model Reference
+- `Product`: identity, name, price, status, slot metadata, inventory counts, emitting restock/out-of-stock events.
+- `Money` value objects (`Coin`, `MoneyBalance`, `CoinBundle`): encapsulate accepted denominations and safe arithmetic.
+- `Inventory`/`Slot`: binds products to physical compartments with capacity and current quantity.
+- `CoinInventory`: aggregate tracking per-denomination reserves plus change-dispensing/restock rules.
+- `VendingSession`: lifecycle of customer interaction (inserted coins, product selection, transaction state); persisted from first action, closed as `completed`, `cancelled`, or `timeout`, linked to resulting `Transaction`, subject to retention policies.
+- `Transaction`: audit aggregate for completed operations (sales, returns, admin adjustments) with metadata.
+- `AdminUser`: aggregate for authenticated console accounts, credentials, permissions, and active tokens/sessions.
+- `MachineState`: projection summarizing stock, coin levels, and operational flags for quick reads.
+- `MaintenanceLog`: record of service interventions, manual reconciliations, and notes.
+- `AuthToken`/`RefreshToken`: manage authentication lifecycle and revocation guarantees.
+- Integration adapters/DTOs: map domain models to MongoDB documents, API payloads, and messaging events.
+
+## Git & Process
+- Encourage conventional commits, feature branches, and frequent commits.
+- Keep history clean; document breaking changes and database migrations.
+- Coordinate frontend/backend changes within the same PR when contract changes occur.
+
+## Success Criteria
+- Vue frontend and Symfony API communicate seamlessly through Docker networking.
+- Authenticated admin panel operates reliably with proper access controls.
+- MongoDB integration stable with reproducible seeds and migrations.
+- Entire stack builds, tests, and runs via documented Docker workflows.
+- Codebase remains maintainable, well-tested, and production-ready.
