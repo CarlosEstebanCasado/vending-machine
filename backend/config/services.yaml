@@ -1,0 +1,28 @@
+# This file configures your own services.
+
+parameters:
+    app.project_dir: '%kernel.project_dir%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        bind:
+            string $projectDir: '%app.project_dir%'
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Domain/'
+            - '../src/Application/DTO/'
+            - '../src/Infrastructure/User/Document/'
+            - '../src/UI/Http/Security/'
+            - '../src/Kernel.php'
+
+    App\Infrastructure\User\Document\:
+        resource: '../src/Infrastructure/User/Document/'
+        public: false
+
+    App\UI\Http\Security\:
+        resource: '../src/UI/Http/Security/'
+        public: false
