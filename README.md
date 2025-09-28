@@ -6,29 +6,35 @@ Full vending machine simulation: customer purchases and administrative managemen
 ## Getting Started
 1. Clone the repository and copy environment variables:
    ```bash
-   git clone <repo-url>
+   git clone git@github.com:CarlosEstebanCasado/vending-machine.git
    cp .env.dist .env
    ```
-2. Install backend dependencies (PHP ≥ 8.4 recommended):
+2. Add the local domain entry (run with elevated permissions):
+   - macOS/Linux:
+     ```bash
+     sudo ./scripts/setup-host-entry.sh
+     ```
+   - Windows (PowerShell as Administrator):
+     ```powershell
+     ./scripts/setup-host-entry.ps1
+     ```
+3. Install backend dependencies (runs inside Docker):
    ```bash
-   cd backend
-   composer install
+   docker compose --profile dev run --rm backend composer install
    ```
-3. Install frontend dependencies (Node 20 recommended):
+4. Install frontend dependencies (runs inside Docker):
    ```bash
-   cd ../frontend
-   npm install
+   docker compose --profile dev run --rm frontend npm install
    ```
-4. Launch the development stack with Docker (Symfony, Vite, MongoDB, Redis):
+5. Launch the development stack with Docker (gateway proxy, Symfony, Vite, MongoDB, Redis):
    ```bash
-   cd ..
    docker compose --profile dev up --build
    ```
-5. Access the services:
-   - API: http://localhost:8080/health
-   - Frontend: http://localhost:5173
+6. Access the services:
+   - SPA: http://vendingmachine.test
+   - API: http://vendingmachine.test/api/ping
 
-6. Stop the stack:
+7. Stop the stack:
    ```bash
    docker compose --profile dev down
    ```
@@ -167,7 +173,7 @@ All monetary amounts are stored in cents (`int32`) to avoid precision issues.
 - Indexes: `{ event: 1, created_at: -1 }`, `{ actor_id: 1, created_at: -1 }`
 
 ## Docker Tooling
-- `docker-compose.yml` launches the development stack (Symfony dev server, Vite dev server, MongoDB, Redis) via `docker compose --profile dev up --build` (run `composer install` and `npm install` at least once beforehand, or execute `docker compose --profile dev run backend composer install` / `docker compose --profile dev run frontend npm install`).
+- `docker-compose.yml` launches the development stack (gateway proxy on port 80, Symfony dev server, Vite dev server, MongoDB, Redis) via `docker compose --profile dev up --build`. Before the first `up`, install dependencies with `docker compose --profile dev run --rm backend composer install` and `docker compose --profile dev run --rm frontend npm install`.
 - `docker-compose.prod.yml` produces production images: a PHP 8.4 runtime serving the API on port `8080`, an Nginx-based SPA container, plus MongoDB and Redis. Start with `docker compose -f docker-compose.prod.yml up --build -d`.
 - Backend and frontend images are multi-stage (`docker/backend/Dockerfile`, `docker/frontend/Dockerfile`) so CI can build optimized artifacts (`backend-prod`, `frontend-prod`).
 - `.dockerignore` prevents host `vendor/`, `node_modules/`, and Git metadata from bloating the build context.
