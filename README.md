@@ -39,6 +39,11 @@ Full vending machine simulation: customer purchases and administrative managemen
    docker compose --profile dev down
    ```
 
+**Daily workflow**
+1. Start the stack: `docker compose --profile dev up -d`
+2. Check logs (optional): `docker compose logs -f gateway`
+3. Stop when done: `docker compose --profile dev down`
+
 ## Use Cases
 - Insert accepted coins, display current balance, cancel the operation with coin return, or complete the purchase receiving change.
 - Browse the customer-visible catalog: availability, pricing, and stock/change alerts.
