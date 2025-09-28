@@ -29,7 +29,7 @@ Full vending machine simulation: customer purchases and administrative managemen
    ```
 5. Launch the development stack with Docker (gateway proxy, Symfony, Vite, MongoDB, Redis):
    ```bash
-   docker compose --profile dev up --build
+   docker compose --profile dev up --build -d
    ```
 6. Access the services:
    - SPA: http://vendingmachine.test
@@ -179,7 +179,7 @@ All monetary amounts are stored in cents (`int32`) to avoid precision issues.
 - Indexes: `{ event: 1, created_at: -1 }`, `{ actor_id: 1, created_at: -1 }`
 
 ## Docker Tooling
-- `docker-compose.yml` launches the development stack (gateway proxy on port 80, Symfony dev server, Vite dev server, MongoDB, Redis) via `docker compose --profile dev up --build`. Before the first `up`, install dependencies with `docker compose --profile dev run --rm backend composer install` and `docker compose --profile dev run --rm frontend npm install`.
+- `docker-compose.yml` launches the development stack (gateway proxy on port 80, Symfony dev server, Vite dev server, MongoDB, Redis) via `docker compose --profile dev up --build -d`. Before the first `up`, install dependencies with `docker compose --profile dev run --rm backend composer install` and `docker compose --profile dev run --rm frontend npm install`.
 - `docker-compose.prod.yml` produces production images: a PHP 8.4 runtime serving the API on port `8080`, an Nginx-based SPA container, plus MongoDB and Redis. Start with `docker compose -f docker-compose.prod.yml up --build -d`.
 - Backend and frontend images are multi-stage (`docker/backend/Dockerfile`, `docker/frontend/Dockerfile`) so CI can build optimized artifacts (`backend-prod`, `frontend-prod`).
 - `.dockerignore` prevents host `vendor/`, `node_modules/`, and Git metadata from bloating the build context.

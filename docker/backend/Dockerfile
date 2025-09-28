@@ -4,19 +4,23 @@ ARG PHP_VERSION=8.4-rc-fpm-alpine3.20
 FROM composer:2.7 AS composer_dev
 WORKDIR /app
 COPY backend/composer.json backend/composer.lock backend/symfony.lock ./
-RUN composer install --no-interaction --prefer-dist --no-progress --no-scripts
+RUN composer install --no-interaction --prefer-dist --no-progress --no-scripts \
+    --ignore-platform-req=php --ignore-platform-req=ext-mongodb
 
 FROM composer:2.7 AS composer_prod
 WORKDIR /app
 COPY backend/composer.json backend/composer.lock backend/symfony.lock ./
-RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --no-scripts
+RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --no-scripts \
+    --ignore-platform-req=php --ignore-platform-req=ext-mongodb
 
 FROM php:${PHP_VERSION} AS backend-base
 RUN apk add --no-cache icu-dev libzip-dev oniguruma-dev zip unzip curl git bash \
+    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && docker-php-ext-configure intl \
     && docker-php-ext-install intl opcache \
     && pecl install mongodb \
-    && docker-php-ext-enable mongodb
+    && docker-php-ext-enable mongodb \
+    && apk del .build-deps
 COPY --from=composer_prod /usr/bin/composer /usr/local/bin/composer
 WORKDIR /srv/app
 ENV COMPOSER_ALLOW_SUPERUSER=1

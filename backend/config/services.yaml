@@ -7,8 +7,6 @@ services:
     _defaults:
         autowire: true
         autoconfigure: true
-        bind:
-            string $projectDir: '%app.project_dir%'
 
     App\:
         resource: '../src/'
