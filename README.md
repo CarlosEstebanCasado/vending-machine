@@ -7,6 +7,7 @@ Full vending machine simulation: customer purchases and administrative managemen
 1. Clone the repository and copy environment variables:
    ```bash
    git clone git@github.com:CarlosEstebanCasado/vending-machine.git
+   cd vending-machine
    cp .env.dist .env
    ```
 2. Add the local domain entry (run with elevated permissions):
