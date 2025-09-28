@@ -49,14 +49,20 @@ frontend-test: ## Execute frontend test suite
 		echo "frontend/package.json not found. Skipping frontend tests."; \
 	fi
 
-docker-up: ## Start the full stack using Docker Compose
-	$(COMPOSE) up -d
+docker-up: ## Start the development stack (backend, frontend, mongo, redis)
+    $(COMPOSE) --profile dev up --build -d
 
-docker-down: ## Stop the Docker Compose stack
-	$(COMPOSE) down
+docker-down: ## Stop the development stack
+    $(COMPOSE) --profile dev down
 
-docker-build: ## Build Docker images
-	$(COMPOSE) build
+docker-build: ## Build development images
+    $(COMPOSE) --profile dev build
+
+docker-prod-up: ## Start the production stack
+    $(COMPOSE) -f docker-compose.prod.yml up --build -d
+
+docker-prod-down: ## Stop the production stack
+    $(COMPOSE) -f docker-compose.prod.yml down
 
 clean: ## Remove build artifacts and vendor directories
 	rm -rf backend/vendor backend/var frontend/node_modules frontend/dist frontend/.vite

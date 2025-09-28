@@ -1,0 +1,72 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: backend-dev
+    container_name: vending-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.dist
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: "1"
+      MONGO_DSN: mongodb://mongo:27017
+      MONGO_DATABASE: vending_machine
+    volumes:
+      - ./backend:/srv/app
+    depends_on:
+      mongo:
+        condition: service_healthy
+    profiles:
+      - dev
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      target: frontend-dev
+    container_name: vending-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api
+    volumes:
+      - ./frontend:/app
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    depends_on:
+      - backend
+    profiles:
+      - dev
+
+  mongo:
+    image: mongo:7.0
+    container_name: vending-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand(\"ping\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - dev
+      - prod
+
+  redis:
+    image: redis:7-alpine
+    container_name: vending-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    profiles:
+      - dev
+      - prod
+
+volumes:
+  mongo-data:

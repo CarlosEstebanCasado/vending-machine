@@ -134,3 +134,9 @@ All monetary amounts are stored in cents (`int32`) to avoid precision issues.
 - `user_agent` (`string|null`)
 - `created_at` (`Date`)
 - Indexes: `{ event: 1, created_at: -1 }`, `{ actor_id: 1, created_at: -1 }`
+
+## Docker Tooling
+- `docker-compose.yml` launches the development stack (Symfony dev server, Vite dev server, MongoDB, Redis) via `docker compose --profile dev up --build` (run `composer install` and `npm install` at least once beforehand, or execute `docker compose --profile dev run backend composer install` / `docker compose --profile dev run frontend npm install`).
+- `docker-compose.prod.yml` produces production images: a PHP 8.4 runtime serving the API on port `8080`, an Nginx-based SPA container, plus MongoDB and Redis. Start with `docker compose -f docker-compose.prod.yml up --build -d`.
+- Backend and frontend images are multi-stage (`docker/backend/Dockerfile`, `docker/frontend/Dockerfile`) so CI can build optimized artifacts (`backend-prod`, `frontend-prod`).
+- `.dockerignore` prevents host `vendor/`, `node_modules/`, and Git metadata from bloating the build context.
