@@ -2,6 +2,37 @@
 # vending-machine
 Full vending machine simulation: customer purchases and administrative management. Vue.js frontend + Symfony API backend. Docker + MongoDB + Redis.
 
+
+## Getting Started
+1. Clone the repository and copy environment variables:
+   ```bash
+   git clone <repo-url>
+   cp .env.dist .env
+   ```
+2. Install backend dependencies (PHP ≥ 8.4 recommended):
+   ```bash
+   cd backend
+   composer install
+   ```
+3. Install frontend dependencies (Node 20 recommended):
+   ```bash
+   cd ../frontend
+   npm install
+   ```
+4. Launch the development stack with Docker (Symfony, Vite, MongoDB, Redis):
+   ```bash
+   cd ..
+   docker compose --profile dev up --build
+   ```
+5. Access the services:
+   - API: http://localhost:8080/health
+   - Frontend: http://localhost:5173
+
+6. Stop the stack:
+   ```bash
+   docker compose --profile dev down
+   ```
+
 ## Use Cases
 - Insert accepted coins, display current balance, cancel the operation with coin return, or complete the purchase receiving change.
 - Browse the customer-visible catalog: availability, pricing, and stock/change alerts.
