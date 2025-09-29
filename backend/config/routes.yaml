@@ -1,19 +1,19 @@
-shared_controllers:
+system_controllers:
     resource:
-        path: ../src/Shared/UI/Http/Controller/
-        namespace: App\Shared\UI\Http\Controller
+        path: ../src/System/UI/Http/Controller/
+        namespace: App\System\UI\Http\Controller
     type: attribute
 
 vending_controllers:
     resource:
-        path: ../src/VendingMachine/UI/Http/Controller/
-        namespace: App\VendingMachine\UI\Http\Controller
+        path: ../src/VendingMachine/Product/UI/Http/Controller/
+        namespace: App\VendingMachine\Product\UI\Http\Controller
     type: attribute
     prefix: /api
 
 admin_controllers:
     resource:
-        path: ../src/AdminPanel/UI/Http/Controller/
-        namespace: App\AdminPanel\UI\Http\Controller
+        path: ../src/AdminPanel/User/UI/Http/Controller/
+        namespace: App\AdminPanel\User\UI\Http\Controller
     type: attribute
     prefix: /api/admin

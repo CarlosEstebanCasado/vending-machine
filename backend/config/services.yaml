@@ -11,16 +11,16 @@ services:
     App\:
         resource: '../src/'
         exclude:
-            - '../src/AdminPanel/Domain/'
+            - '../src/AdminPanel/User/Domain/'
             - '../src/AdminPanel/Application/DTO/'
-            - '../src/VendingMachine/Domain/'
+            - '../src/VendingMachine/Product/Domain/'
             - '../src/VendingMachine/Application/DTO/'
-            - '../src/Shared/Domain/'
+            - '../src/Shared/Money/Domain/'
             - '../src/Shared/Application/DTO/'
-            - '../src/AdminPanel/Infrastructure/User/Document/'
-            - '../src/AdminPanel/UI/Http/Security/'
+            - '../src/AdminPanel/User/Infrastructure/User/Document/'
+            - '../src/AdminPanel/User/UI/Http/Security/'
             - '../src/Kernel.php'
 
-    App\AdminPanel\Infrastructure\User\Document\:
-        resource: '../src/AdminPanel/Infrastructure/User/Document/'
+    App\AdminPanel\User\Infrastructure\User\Document\:
+        resource: '../src/AdminPanel/User/Infrastructure/User/Document/'
         public: false
