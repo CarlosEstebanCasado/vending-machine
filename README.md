@@ -58,7 +58,7 @@ Full vending machine simulation: customer purchases and administrative managemen
 ## Domain Models
 - `Product`: identity, name, price, status, slot metadata, inventory counts; emits restock/out-of-stock events.
 - `Money` and derivatives (`Coin`, `MoneyBalance`, `CoinBundle`): value objects representing accepted denominations and safe arithmetic.
-- `Inventory`/`Slot`: binds products to physical compartments, tracking max capacity and current quantity.
+- `Inventory`/`Slot`: binds products to physical compartments, tracking max capacity and current quantity. The `restock_threshold` marks the quantity at which the slot should be considered low on product so operations can schedule a replenishment before it runs out.
 - `CoinInventory`: aggregate that maintains per-denomination counts and change-dispense/restock rules.
 - `VendingSession`: tracks the ongoing interaction (inserted coins, selected product, transactional state); persisted from the first user action, closed with `completed`, `cancelled`, or `timeout`, linked to the resulting `Transaction`, and purged only through retention policies.
 - `Transaction`: aggregate for completed operations (sales, refunds, admin adjustments) with audit metadata.
