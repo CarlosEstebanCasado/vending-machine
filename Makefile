@@ -1,6 +1,6 @@
 COMPOSE ?= docker compose
 
-.PHONY: help install backend-install frontend-install backend-lint frontend-lint backend-test frontend-test docker-up docker-down docker-build clean
+.PHONY: help install backend-install frontend-install backend-lint frontend-lint backend-test backend-test-bc frontend-test docker-up docker-down docker-build clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -35,12 +35,15 @@ frontend-lint: ## Run frontend linting
 		echo "frontend/package.json not found. Skipping frontend lint."; \
 	fi
 
-backend-test: ## Execute backend test suite
-	@if [ -f backend/composer.json ]; then \
-		cd backend && composer run test || true; \
-	else \
-		echo "backend/composer.json not found. Skipping backend tests."; \
+backend-test: ## Execute backend test suite inside Docker
+	$(COMPOSE) --profile dev run --rm backend ./vendor/bin/phpunit
+
+backend-test-bc: ## Execute backend tests for a bounded context (CONTEXT=VendingMachine/Inventory)
+	@if [ -z "$(CONTEXT)" ]; then \
+		echo "Please provide CONTEXT=<relative test path, e.g. VendingMachine/Inventory or Unit/VendingMachine/Product>"; \
+		exit 1; \
 	fi
+	$(COMPOSE) --profile dev run --rm backend ./vendor/bin/phpunit tests/$(CONTEXT)
 
 frontend-test: ## Execute frontend test suite
 	@if [ -f frontend/package.json ]; then \
@@ -50,19 +53,19 @@ frontend-test: ## Execute frontend test suite
 	fi
 
 docker-up: ## Start the development stack (backend, frontend, mongo, redis)
-    $(COMPOSE) --profile dev up --build -d
+	$(COMPOSE) --profile dev up --build -d
 
 docker-down: ## Stop the development stack
-    $(COMPOSE) --profile dev down
+	$(COMPOSE) --profile dev down
 
 docker-build: ## Build development images
-    $(COMPOSE) --profile dev build
+	$(COMPOSE) --profile dev build
 
 docker-prod-up: ## Start the production stack
-    $(COMPOSE) -f docker-compose.prod.yml up --build -d
+	$(COMPOSE) -f docker-compose.prod.yml up --build -d
 
 docker-prod-down: ## Stop the production stack
-    $(COMPOSE) -f docker-compose.prod.yml down
+	$(COMPOSE) -f docker-compose.prod.yml down
 
 clean: ## Remove build artifacts and vendor directories
 	rm -rf backend/vendor backend/var frontend/node_modules frontend/dist frontend/.vite
