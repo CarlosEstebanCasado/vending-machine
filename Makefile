@@ -9,28 +9,28 @@ install: backend-install frontend-install ## Install PHP and JS dependencies
 
 backend-install: ## Install backend dependencies (Composer)
 	@if [ -f backend/composer.json ]; then \
-		cd backend && composer install; \
+		$(COMPOSE) --profile dev run --rm backend composer install; \
 	else \
 		echo "backend/composer.json not found. Skipping backend install."; \
 	fi
 
 frontend-install: ## Install frontend dependencies (Node)
 	@if [ -f frontend/package.json ]; then \
-		cd frontend && npm install; \
+		$(COMPOSE) --profile dev run --rm frontend npm install; \
 	else \
 		echo "frontend/package.json not found. Skipping frontend install."; \
 	fi
 
 backend-lint: ## Run backend linters/static analysis
 	@if [ -f backend/composer.json ]; then \
-		cd backend && composer run lint || true; \
+		$(COMPOSE) --profile dev run --rm backend composer run lint || true; \
 	else \
 		echo "backend/composer.json not found. Skipping backend lint."; \
 	fi
 
 frontend-lint: ## Run frontend linting
 	@if [ -f frontend/package.json ]; then \
-		cd frontend && npm run lint || true; \
+		$(COMPOSE) --profile dev run --rm frontend npm run lint || true; \
 	else \
 		echo "frontend/package.json not found. Skipping frontend lint."; \
 	fi
@@ -47,7 +47,7 @@ backend-test-bc: ## Execute backend tests for a bounded context (CONTEXT=Vending
 
 frontend-test: ## Execute frontend test suite
 	@if [ -f frontend/package.json ]; then \
-		cd frontend && npm test || true; \
+		$(COMPOSE) --profile dev run --rm frontend npm test || true; \
 	else \
 		echo "frontend/package.json not found. Skipping frontend tests."; \
 	fi
