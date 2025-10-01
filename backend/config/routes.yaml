@@ -3,6 +3,7 @@ system_controllers:
         path: ../src/System/UI/Http/Controller/
         namespace: App\System\UI\Http\Controller
     type: attribute
+    prefix: /api
 
 vending_controllers:
     resource:
@@ -16,6 +17,7 @@ machine_controllers:
         path: ../src/VendingMachine/Machine/UI/Http/Controller/
         namespace: App\VendingMachine\Machine\UI\Http\Controller
     type: attribute
+    prefix: /api
 
 admin_controllers:
     resource:

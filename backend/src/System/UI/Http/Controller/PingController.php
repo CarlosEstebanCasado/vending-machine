@@ -9,7 +9,7 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class PingController
 {
-    #[Route('/api/ping', name: 'api_ping', methods: ['GET'])]
+    #[Route('/ping', name: 'api_ping', methods: ['GET'])]
     public function __invoke(): JsonResponse
     {
         return new JsonResponse(['message' => 'pong']);
