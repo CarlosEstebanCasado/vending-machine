@@ -10,7 +10,7 @@ final class SlotCode
 
     private function __construct(private string $value)
     {
-        $normalized = strtoupper(trim($value));
+        $normalized = trim($value);
         if ('' === $normalized) {
             throw new \InvalidArgumentException('Slot code cannot be empty.');
         }
@@ -19,8 +19,8 @@ final class SlotCode
             throw new \InvalidArgumentException(sprintf('Slot code cannot exceed %d characters.', self::MAX_LENGTH));
         }
 
-        if (!preg_match('/^[A-Z0-9-]+$/', $normalized)) {
-            throw new \InvalidArgumentException('Slot code must contain only alphanumeric characters or hyphens.');
+        if (!preg_match('/^\d+$/', $normalized)) {
+            throw new \InvalidArgumentException('Slot code must contain only digits.');
         }
 
         $this->value = $normalized;

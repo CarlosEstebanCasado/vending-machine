@@ -182,8 +182,8 @@ final class TransactionTest extends TestCase
     public function testAddMetadataStoresValues(): void
     {
         $transaction = TransactionMother::vend();
-        $transaction->addMetadata('machine', 'A1');
+        $transaction->addMetadata('machine', '11');
 
-        self::assertSame('A1', $transaction->metadata()['machine']);
+        self::assertSame('11', $transaction->metadata()['machine']);
     }
 }

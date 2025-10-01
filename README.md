@@ -95,7 +95,7 @@ All monetary amounts are stored in cents (`int32`) to avoid precision issues.
 
 ### Collection: `inventory_slots`
 - `_id` (`ObjectId`)
-- `slot_code` (`string`) — physical label (e.g., "A1")
+- `slot_code` (`string`) — physical label (e.g., "11")
 - `product_id` (`ObjectId|null`) — current product reference
 - `capacity` (`int32`)
 - `quantity` (`int32`)
