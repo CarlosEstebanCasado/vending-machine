@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\VendingMachine\Machine\Infrastructure\Document;
+namespace App\VendingMachine\Machine\Infrastructure\Mongo\Document;
 
 use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
 

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\VendingMachine\Machine\Application\Service;
 
 use App\VendingMachine\Machine\Application\GetMachineState\MachineStateView;
-use App\VendingMachine\Machine\Infrastructure\Document\ActiveSessionDocument;
-use App\VendingMachine\Machine\Infrastructure\Document\CoinInventoryProjectionDocument;
-use App\VendingMachine\Machine\Infrastructure\Document\SlotProjectionDocument;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 

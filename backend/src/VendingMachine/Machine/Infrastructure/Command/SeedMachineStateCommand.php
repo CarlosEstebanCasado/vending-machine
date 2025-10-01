@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Machine\Infrastructure\Command;
 
-use App\VendingMachine\Machine\Infrastructure\Document\ActiveSessionDocument;
-use App\VendingMachine\Machine\Infrastructure\Document\CoinInventoryProjectionDocument;
-use App\VendingMachine\Machine\Infrastructure\Document\SlotProjectionDocument;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Symfony\Component\Console\Attribute\AsCommand;
