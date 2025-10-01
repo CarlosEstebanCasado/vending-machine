@@ -2,6 +2,7 @@
 
 parameters:
     app.project_dir: '%kernel.project_dir%'
+    app.machine_id: 'vendingmachine-default'
 
 services:
     _defaults:
@@ -24,3 +25,13 @@ services:
     App\AdminPanel\User\Infrastructure\User\Document\:
         resource: '../src/AdminPanel/User/Infrastructure/User/Document/'
         public: false
+
+    App\VendingMachine\Machine\Application\Service\MongoMachineStateProvider:
+        arguments:
+            $machineId: '%app.machine_id%'
+
+    App\VendingMachine\Machine\Application\Service\MachineStateProvider: '@App\VendingMachine\Machine\Application\Service\MongoMachineStateProvider'
+
+    App\VendingMachine\Machine\Infrastructure\Command\SeedMachineStateCommand:
+        arguments:
+            $machineId: '%app.machine_id%'

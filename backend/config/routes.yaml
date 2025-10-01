@@ -11,6 +11,12 @@ vending_controllers:
     type: attribute
     prefix: /api
 
+machine_controllers:
+    resource:
+        path: ../src/VendingMachine/Machine/UI/Http/Controller/
+        namespace: App\VendingMachine\Machine\UI\Http\Controller
+    type: attribute
+
 admin_controllers:
     resource:
         path: ../src/AdminPanel/User/UI/Http/Controller/

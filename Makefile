@@ -36,14 +36,14 @@ frontend-lint: ## Run frontend linting
 	fi
 
 backend-test: ## Execute backend test suite inside Docker
-	$(COMPOSE) --profile dev run --rm backend ./vendor/bin/phpunit
+	$(COMPOSE) --profile dev run --rm backend env APP_ENV=test APP_DEBUG=1 ./vendor/bin/phpunit
 
 backend-test-bc: ## Execute backend tests for a bounded context (CONTEXT=VendingMachine/Inventory)
 	@if [ -z "$(CONTEXT)" ]; then \
 		echo "Please provide CONTEXT=<relative test path, e.g. VendingMachine/Inventory or Unit/VendingMachine/Product>"; \
 		exit 1; \
 	fi
-	$(COMPOSE) --profile dev run --rm backend ./vendor/bin/phpunit tests/$(CONTEXT)
+	$(COMPOSE) --profile dev run --rm backend env APP_ENV=test APP_DEBUG=1 ./vendor/bin/phpunit tests/$(CONTEXT)
 
 frontend-test: ## Execute frontend test suite
 	@if [ -f frontend/package.json ]; then \
