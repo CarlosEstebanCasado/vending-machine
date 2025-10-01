@@ -44,13 +44,13 @@
       </section>
 
       <aside class="control-panel">
-        <div class="product-display" :class="{ 'product-display--idle': showPrompt }">
+        <div class="product-display">
           <div class="product-display__header">
             <span class="product-display__slot">Slot {{ selectedSlotCode || '—' }}</span>
             <span class="product-display__entered" v-if="enteredCode">{{ enteredCode }}</span>
           </div>
 
-          <h2 class="product-display__name">{{ displayProductName }}</h2>
+          <h2 class="product-display__name">{{ displayName }}</h2>
           <div class="product-display__price">{{ displayPriceText }}</div>
 
           <dl class="product-display__status">
@@ -60,18 +60,21 @@
             </div>
             <div>
               <dt>Required</dt>
-              <dd :class="{ negative: !showPrompt && balanceAmount < requiredAmount }">
-                {{ showPrompt ? '—' : centsToCurrency(requiredAmount) }}
-              </dd>
+              <dd :class="{ negative: showNegative }">{{ requiredDisplay }}</dd>
             </div>
           </dl>
 
           <div v-if="showPrompt" class="product-display__marquee">
             <div class="marquee-track">
-              <span>Select a product to start the sale · </span>
-              <span>Select a product to start the sale · </span>
-              <span>Select a product to start the sale · </span>
+              <span>Select a product to start the sale. </span>
+              <span>Select a product to start the sale. </span>
+              <span>Select a product to start the sale. </span>
             </div>
+          </div>
+
+          <div v-else-if="selectionState === 'unavailable'" class="product-display__warning">
+            <span class="warning-icon">!</span>
+            <p>Product unavailable</p>
           </div>
         </div>
 
@@ -153,12 +156,26 @@ export default defineComponent({
     productCards(): MachineCatalogItem[] {
       return [...this.catalog].sort((a, b) => Number(a.slotCode) - Number(b.slotCode))
     },
-    selectedProduct(): MachineCatalogItem | null {
+    rawSelection(): MachineCatalogItem | undefined {
+      return this.productCards.find((item) => item.slotCode === this.selectedSlotCode)
+    },
+    selectionState(): 'idle' | 'ready' | 'unavailable' {
       if (!this.selectedSlotCode) {
-        return null
+        return 'idle'
       }
 
-      return this.productCards.find((item) => item.slotCode === this.selectedSlotCode) ?? null
+      if (!this.rawSelection) {
+        return 'unavailable'
+      }
+
+      if (!this.rawSelection.productId || this.rawSelection.status !== 'available') {
+        return 'unavailable'
+      }
+
+      return 'ready'
+    },
+    selectedProduct(): MachineCatalogItem | null {
+      return this.selectionState === 'ready' ? (this.rawSelection as MachineCatalogItem) : null
     },
     balanceAmount(): number {
       return this.session?.balanceCents ?? 0
@@ -166,18 +183,36 @@ export default defineComponent({
     requiredAmount(): number {
       return this.selectedProduct?.priceCents ?? 0
     },
-    displayProductName(): string {
-      return this.selectedProduct?.productName ?? 'Select a product'
+    showPrompt(): boolean {
+      return this.selectionState === 'idle'
+    },
+    displayName(): string {
+      if (this.selectionState === 'unavailable') {
+        return 'Product unavailable'
+      }
+
+      if (this.selectedProduct) {
+        return this.selectedProduct.productName ?? 'Product'
+      }
+
+      return 'Select a product'
     },
     displayPriceText(): string {
-      if (!this.selectedProduct || this.selectedProduct.priceCents === null) {
+      if (this.selectionState === 'ready' && this.selectedProduct?.priceCents !== null) {
+        return this.centsToCurrency(this.selectedProduct.priceCents)
+      }
+
+      return '—'
+    },
+    requiredDisplay(): string {
+      if (this.selectionState !== 'ready') {
         return '—'
       }
 
-      return this.centsToCurrency(this.selectedProduct.priceCents)
+      return this.centsToCurrency(this.requiredAmount)
     },
-    showPrompt(): boolean {
-      return this.selectedProduct === null
+    showNegative(): boolean {
+      return this.selectionState === 'ready' && this.balanceAmount < this.requiredAmount
     },
     keypadButtons(): string[][] {
       return [
@@ -239,17 +274,18 @@ export default defineComponent({
       }
 
       const hasPartialMatch = this.productCards.some((item) => item.slotCode.startsWith(candidate))
-      if (!hasPartialMatch) {
-        this.enteredCode = value
-        const fallback = this.productCards.find((item) => item.slotCode === this.enteredCode)
-        if (fallback) {
-          this.selectedSlotCode = fallback.slotCode
-          this.enteredCode = ''
-        } else {
-          this.selectedSlotCode = ''
-          this.enteredCode = ''
-        }
+      if (hasPartialMatch) {
+        this.selectedSlotCode = ''
+        return
       }
+
+      const fallback = this.productCards.find((item) => item.slotCode === value)
+      if (fallback) {
+        this.selectedSlotCode = fallback.slotCode
+      } else {
+        this.selectedSlotCode = candidate
+      }
+      this.enteredCode = ''
     },
     imageClass(productId: string | null): string {
       switch (productId) {
@@ -466,6 +502,42 @@ export default defineComponent({
   padding: 0 1.5rem;
   background: rgba(15, 23, 42, 0.82);
   pointer-events: none;
+}
+
+.product-display__warning {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  border-radius: 16px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fde68a;
+  text-align: center;
+  font-weight: 600;
+  padding: 1.25rem;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.4);
+  pointer-events: none;
+}
+
+.product-display__warning p {
+  margin: 0;
+}
+
+.warning-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f97316 0%, #fb923c 100%);
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.35);
 }
 
 .marquee-track {
