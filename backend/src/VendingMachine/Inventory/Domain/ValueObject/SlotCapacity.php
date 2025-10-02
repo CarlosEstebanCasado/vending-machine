@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Inventory\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class SlotCapacity
 {
     private function __construct(private int $value)
     {
         if ($value <= 0) {
-            throw new \InvalidArgumentException('Slot capacity must be greater than zero.');
+            throw new InvalidArgumentException('Slot capacity must be greater than zero.');
         }
     }
 

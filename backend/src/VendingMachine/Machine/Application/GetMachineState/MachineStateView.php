@@ -9,9 +9,9 @@ use DateTimeImmutable;
 final class MachineStateView
 {
     /**
-     * @param array<int, array<string, mixed>> $catalog
+     * @param array<int, array<string, mixed>>                             $catalog
      * @param array{available: array<int, int>, reserved: array<int, int>} $coins
-     * @param array<string, mixed> $alerts
+     * @param array<string, mixed>                                         $alerts
      */
     public function __construct(
         private readonly string $machineId,

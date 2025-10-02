@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Inventory\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class SlotQuantity
 {
     private function __construct(private int $value)
     {
         if ($value < 0) {
-            throw new \InvalidArgumentException('Slot quantity cannot be negative.');
+            throw new InvalidArgumentException('Slot quantity cannot be negative.');
         }
     }
 
@@ -31,7 +33,7 @@ final class SlotQuantity
     public function add(int $units): self
     {
         if ($units <= 0) {
-            throw new \InvalidArgumentException('Units to add must be greater than zero.');
+            throw new InvalidArgumentException('Units to add must be greater than zero.');
         }
 
         return new self($this->value + $units);
@@ -40,11 +42,11 @@ final class SlotQuantity
     public function subtract(int $units): self
     {
         if ($units <= 0) {
-            throw new \InvalidArgumentException('Units to subtract must be greater than zero.');
+            throw new InvalidArgumentException('Units to subtract must be greater than zero.');
         }
 
         if ($units > $this->value) {
-            throw new \InvalidArgumentException('Cannot subtract more units than currently available.');
+            throw new InvalidArgumentException('Cannot subtract more units than currently available.');
         }
 
         return new self($this->value - $units);

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Transaction\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class TransactionId
 {
     private string $value;
@@ -12,7 +14,7 @@ final class TransactionId
     {
         $trimmed = trim($value);
         if ('' === $trimmed) {
-            throw new \InvalidArgumentException('Transaction id cannot be empty.');
+            throw new InvalidArgumentException('Transaction id cannot be empty.');
         }
 
         $this->value = $trimmed;

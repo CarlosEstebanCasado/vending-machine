@@ -10,7 +10,7 @@ final class SessionClosure
 {
     public function __construct(
         private readonly CoinBundle $insertedCoins,
-        private readonly ?CoinBundle $changePlan
+        private readonly ?CoinBundle $changePlan,
     ) {
     }
 

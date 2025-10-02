@@ -6,7 +6,6 @@ namespace App\Tests\Unit\VendingMachine\CoinInventory\Domain;
 
 use App\Tests\Unit\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundleMother;
 use App\VendingMachine\CoinInventory\Domain\CoinInventory;
-use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundle;
 
 final class CoinInventoryMother
 {

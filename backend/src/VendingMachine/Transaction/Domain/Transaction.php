@@ -13,11 +13,12 @@ use App\VendingMachine\Transaction\Domain\ValueObject\TransactionStatus;
 use App\VendingMachine\Transaction\Domain\ValueObject\TransactionType;
 use DateTimeImmutable;
 use DomainException;
+use InvalidArgumentException;
 
 final class Transaction
 {
     /**
-     * @param TransactionItem[] $items
+     * @param TransactionItem[]    $items
      * @param array<string, mixed> $metadata
      */
     private function __construct(
@@ -40,7 +41,7 @@ final class Transaction
     }
 
     /**
-     * @param TransactionItem[] $items
+     * @param TransactionItem[]    $items
      * @param array<string, mixed> $metadata
      */
     public static function record(
@@ -70,7 +71,7 @@ final class Transaction
     }
 
     /**
-     * @param TransactionItem[] $items
+     * @param TransactionItem[]    $items
      * @param array<string, mixed> $metadata
      */
     public static function restore(
@@ -202,7 +203,7 @@ final class Transaction
     {
         foreach ($items as $item) {
             if (!$item instanceof TransactionItem) {
-                throw new \InvalidArgumentException('All items must be instances of TransactionItem.');
+                throw new InvalidArgumentException('All items must be instances of TransactionItem.');
             }
         }
     }
@@ -211,7 +212,7 @@ final class Transaction
     {
         foreach ($metadata as $key => $_value) {
             if (!is_string($key) || '' === trim($key)) {
-                throw new \InvalidArgumentException('Metadata keys must be non-empty strings.');
+                throw new InvalidArgumentException('Metadata keys must be non-empty strings.');
             }
         }
     }
@@ -303,7 +304,7 @@ final class Transaction
             }
         }
 
-        if ($this->totalPaid->amountInCents() !== 0) {
+        if (0 !== $this->totalPaid->amountInCents()) {
             throw new DomainException('Return transactions should not record customer payments.');
         }
 
@@ -322,7 +323,7 @@ final class Transaction
             throw new DomainException('Restock transactions require items.');
         }
 
-        if ($changeAmount->amountInCents() !== 0) {
+        if (0 !== $changeAmount->amountInCents()) {
             throw new DomainException('Restock transactions cannot dispense change.');
         }
 
@@ -337,7 +338,7 @@ final class Transaction
             throw new DomainException('Adjustment transactions require an admin user.');
         }
 
-        if ($changeAmount->amountInCents() !== 0) {
+        if (0 !== $changeAmount->amountInCents()) {
             throw new DomainException('Adjustment transactions cannot dispense change.');
         }
     }

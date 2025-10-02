@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Product\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class ProductSku
 {
-    private function __construct(private readonly string $value)
+    private readonly string $value;
+
+    private function __construct(string $value)
     {
         $trimmed = trim($value);
         if ('' === $trimmed) {
-            throw new \InvalidArgumentException('Product SKU cannot be empty.');
+            throw new InvalidArgumentException('Product SKU cannot be empty.');
         }
 
         $this->value = $trimmed;

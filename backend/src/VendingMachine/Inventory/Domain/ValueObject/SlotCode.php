@@ -4,23 +4,25 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Inventory\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class SlotCode
 {
-    private const MAX_LENGTH = 10;
+    private const MAX_LENGTH = 2;
 
     private function __construct(private string $value)
     {
         $normalized = trim($value);
         if ('' === $normalized) {
-            throw new \InvalidArgumentException('Slot code cannot be empty.');
+            throw new InvalidArgumentException('Slot code cannot be empty.');
         }
 
         if (strlen($normalized) > self::MAX_LENGTH) {
-            throw new \InvalidArgumentException(sprintf('Slot code cannot exceed %d characters.', self::MAX_LENGTH));
+            throw new InvalidArgumentException(sprintf('Slot code cannot exceed %d characters.', self::MAX_LENGTH));
         }
 
         if (!preg_match('/^\d+$/', $normalized)) {
-            throw new \InvalidArgumentException('Slot code must contain only digits.');
+            throw new InvalidArgumentException('Slot code must contain only digits.');
         }
 
         $this->value = $normalized;

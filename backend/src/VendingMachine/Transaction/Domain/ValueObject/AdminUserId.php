@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Transaction\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class AdminUserId
 {
     private string $value;
@@ -12,7 +14,7 @@ final class AdminUserId
     {
         $trimmed = trim($value);
         if ('' === $trimmed) {
-            throw new \InvalidArgumentException('Admin user id cannot be empty.');
+            throw new InvalidArgumentException('Admin user id cannot be empty.');
         }
 
         $this->value = $trimmed;

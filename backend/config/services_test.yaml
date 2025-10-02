@@ -1,0 +1,4 @@
+services:
+    App\Tests\Doubles\MachineStateProviderStub: ~
+
+    App\VendingMachine\Machine\Application\Service\MachineStateProvider: '@App\Tests\Doubles\MachineStateProviderStub'

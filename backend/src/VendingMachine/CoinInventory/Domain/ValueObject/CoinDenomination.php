@@ -29,7 +29,7 @@ enum CoinDenomination: int
 
     public function canBeDispensedAsChange(): bool
     {
-        return $this !== self::OneDollar;
+        return self::OneDollar !== $this;
     }
 
     public function label(): string

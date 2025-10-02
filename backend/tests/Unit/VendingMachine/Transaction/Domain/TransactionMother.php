@@ -12,7 +12,6 @@ use App\Tests\Unit\VendingMachine\Transaction\Domain\ValueObject\TransactionIdMo
 use App\VendingMachine\Transaction\Domain\Transaction;
 use App\VendingMachine\Transaction\Domain\TransactionItem;
 use App\VendingMachine\Transaction\Domain\ValueObject\AdminUserId;
-use App\VendingMachine\Transaction\Domain\ValueObject\TransactionStatus;
 use App\VendingMachine\Transaction\Domain\ValueObject\TransactionType;
 use DateTimeImmutable;
 

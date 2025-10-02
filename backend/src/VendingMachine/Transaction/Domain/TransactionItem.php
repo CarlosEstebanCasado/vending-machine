@@ -6,6 +6,7 @@ namespace App\VendingMachine\Transaction\Domain;
 
 use App\Shared\Money\Domain\Money;
 use App\VendingMachine\Product\Domain\ValueObject\ProductId;
+use InvalidArgumentException;
 
 final class TransactionItem
 {
@@ -15,7 +16,7 @@ final class TransactionItem
         private readonly Money $unitPrice,
     ) {
         if ($quantity <= 0) {
-            throw new \InvalidArgumentException('Transaction item quantity must be greater than zero.');
+            throw new InvalidArgumentException('Transaction item quantity must be greater than zero.');
         }
     }
 

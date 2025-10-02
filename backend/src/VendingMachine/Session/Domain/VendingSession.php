@@ -50,11 +50,11 @@ final class VendingSession
         ?CoinBundle $changePlan,
         ?SessionCloseReason $closeReason,
     ): self {
-        if ($closeReason !== null && !$state->isTerminal()) {
+        if (null !== $closeReason && !$state->isTerminal()) {
             throw new DomainException('Close reason is only allowed for closed sessions.');
         }
 
-        if ($state->isTerminal() && $closeReason === null) {
+        if ($state->isTerminal() && null === $closeReason) {
             throw new DomainException('Closed sessions must include a close reason.');
         }
 
@@ -229,7 +229,7 @@ final class VendingSession
 
     private function ensureStateConsistency(): void
     {
-        if ($this->state === VendingSessionState::Collecting) {
+        if (VendingSessionState::Collecting === $this->state) {
             if (null !== $this->changePlan) {
                 throw new DomainException('Collecting sessions cannot hold a change plan.');
             }
@@ -239,7 +239,7 @@ final class VendingSession
             }
         }
 
-        if ($this->state === VendingSessionState::Ready) {
+        if (VendingSessionState::Ready === $this->state) {
             if (null === $this->selectedProductId) {
                 throw new DomainException('Ready sessions require a selected product.');
             }
@@ -249,8 +249,8 @@ final class VendingSession
             }
         }
 
-        if ($this->state === VendingSessionState::Dispensing) {
-            if ($this->closeReason !== SessionCloseReason::Completed) {
+        if (VendingSessionState::Dispensing === $this->state) {
+            if (SessionCloseReason::Completed !== $this->closeReason) {
                 throw new DomainException('Dispensing sessions must be completed.');
             }
 
@@ -271,8 +271,8 @@ final class VendingSession
             }
         }
 
-        if ($this->state === VendingSessionState::Cancelled) {
-            if ($this->closeReason !== SessionCloseReason::Cancelled) {
+        if (VendingSessionState::Cancelled === $this->state) {
+            if (SessionCloseReason::Cancelled !== $this->closeReason) {
                 throw new DomainException('Cancelled sessions must include a cancelled close reason.');
             }
 
@@ -293,8 +293,8 @@ final class VendingSession
             }
         }
 
-        if ($this->state === VendingSessionState::Timeout) {
-            if ($this->closeReason !== SessionCloseReason::Timeout) {
+        if (VendingSessionState::Timeout === $this->state) {
+            if (SessionCloseReason::Timeout !== $this->closeReason) {
                 throw new DomainException('Timeout sessions must include a timeout close reason.');
             }
 

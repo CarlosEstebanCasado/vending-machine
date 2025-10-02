@@ -35,7 +35,7 @@ class ActiveSessionDocument
     private DateTimeImmutable $updatedAt;
 
     /**
-     * @param array<int, int> $insertedCoins
+     * @param array<int, int>      $insertedCoins
      * @param array<int, int>|null $changePlan
      */
     public function __construct(

@@ -9,13 +9,10 @@ use App\Tests\Unit\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundleMot
 use App\Tests\Unit\VendingMachine\Session\Domain\ValueObject\VendingSessionIdMother;
 use App\Tests\Unit\VendingMachine\Transaction\Domain\ValueObject\AdminUserIdMother;
 use App\Tests\Unit\VendingMachine\Transaction\Domain\ValueObject\TransactionIdMother;
-use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundle;
-use App\VendingMachine\Session\Domain\ValueObject\VendingSessionId;
 use App\VendingMachine\Transaction\Domain\Transaction;
-use App\VendingMachine\Transaction\Domain\TransactionItem;
-use App\VendingMachine\Transaction\Domain\ValueObject\AdminUserId;
 use App\VendingMachine\Transaction\Domain\ValueObject\TransactionStatus;
 use App\VendingMachine\Transaction\Domain\ValueObject\TransactionType;
+use DateTimeImmutable;
 use DomainException;
 use PHPUnit\Framework\TestCase;
 
@@ -174,7 +171,7 @@ final class TransactionTest extends TestCase
             sessionId: null,
             adminUserId: null,
             metadata: [],
-            createdAt: new \DateTimeImmutable(),
+            createdAt: new DateTimeImmutable(),
             failureReason: null,
         );
     }

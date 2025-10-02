@@ -6,6 +6,7 @@ namespace App\VendingMachine\CoinInventory\Domain\ValueObject;
 
 use App\Shared\Money\Domain\Money;
 use DomainException;
+use InvalidArgumentException;
 
 final class CoinBundle
 {
@@ -22,7 +23,7 @@ final class CoinBundle
             $value = $coins[$denomination->value] ?? 0;
 
             if (!is_int($value)) {
-                throw new \InvalidArgumentException('Coin quantity must be an integer.');
+                throw new InvalidArgumentException('Coin quantity must be an integer.');
             }
 
             $this->coins[$denomination->value] = CoinQuantity::fromInt($value);

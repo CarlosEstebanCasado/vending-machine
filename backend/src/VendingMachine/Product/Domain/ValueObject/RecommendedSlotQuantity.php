@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Product\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class RecommendedSlotQuantity
 {
     private function __construct(private int $value)
     {
         if ($value < 0) {
-            throw new \InvalidArgumentException('Recommended slot quantity cannot be negative.');
+            throw new InvalidArgumentException('Recommended slot quantity cannot be negative.');
         }
     }
 
