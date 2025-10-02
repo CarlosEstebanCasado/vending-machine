@@ -1,6 +1,6 @@
 COMPOSE ?= docker compose
 
-.PHONY: help install backend-install frontend-install backend-lint frontend-lint backend-test backend-ci backend-test-bc frontend-test docker-up docker-down docker-build clean
+.PHONY: help install backend-install frontend-install backend-lint frontend-lint backend-test backend-ci frontend-ci backend-test-bc frontend-test docker-up docker-down docker-build clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -40,6 +40,9 @@ backend-test: ## Execute backend test suite inside Docker
 
 backend-ci: ## Run full backend quality checks inside Docker
 	$(COMPOSE) --profile dev run --rm backend bash -lc "set -euo pipefail; composer validate --strict; composer install --no-interaction --no-progress --prefer-dist; composer run lint; composer run phpstan; APP_ENV=test APP_DEBUG=0 composer run test"
+
+frontend-ci: ## Run full frontend quality checks inside Docker
+	$(COMPOSE) --profile dev run --rm frontend sh -ec "set -eu; npm ci; npm run lint; npm run type-check; npm test; npm run build"
 
 backend-test-bc: ## Execute backend tests for a bounded context (CONTEXT=VendingMachine/Inventory)
 	@if [ -z "$(CONTEXT)" ]; then \
