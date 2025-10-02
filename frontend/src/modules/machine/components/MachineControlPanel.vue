@@ -1,0 +1,372 @@
+<template>
+  <aside class="control-panel">
+    <div class="product-display">
+      <div class="product-display__header">
+        <span class="product-display__slot">Slot {{ selectedSlotCode || '—' }}</span>
+        <span v-if="enteredCode" class="product-display__entered">{{ enteredCode }}</span>
+      </div>
+
+      <h2 class="product-display__name">{{ displayName }}</h2>
+      <div class="product-display__price">{{ displayPrice }}</div>
+
+      <dl class="product-display__status">
+        <div>
+          <dt>Inserted coins</dt>
+          <dd>{{ balanceDisplay }}</dd>
+        </div>
+        <div>
+          <dt>Required</dt>
+          <dd :class="{ negative: showNegative }">{{ requiredDisplay }}</dd>
+        </div>
+      </dl>
+
+      <div v-if="selectionState === 'idle'" class="product-display__marquee">
+        <div class="marquee-track">
+          <span>Select a product to start the sale · </span>
+          <span>Select a product to start the sale · </span>
+          <span>Select a product to start the sale · </span>
+        </div>
+      </div>
+
+      <div v-else-if="selectionState === 'unavailable'" class="product-display__warning">
+        <span class="warning-icon">!</span>
+        <p>Product unavailable</p>
+      </div>
+    </div>
+
+    <div class="keypad">
+      <div v-for="row in keypadButtons" :key="row.join('-')" class="keypad-row">
+        <button
+          v-for="key in row"
+          :key="key"
+          class="keypad-key"
+          type="button"
+          :disabled="loading"
+          @click="$emit('keypad', key)"
+        >
+          {{ key }}
+        </button>
+      </div>
+    </div>
+
+    <div class="coin-insert"></div>
+
+    <div class="actions">
+      <button class="action primary" type="button" disabled>Buy product</button>
+      <button class="action secondary" type="button" disabled>Return coin</button>
+    </div>
+
+    <div class="coin-slot"></div>
+
+    <p v-if="error" class="inline-alert error">{{ error }}</p>
+    <p v-else-if="alerts.outOfStock.length" class="inline-alert warning">
+      Out of stock: {{ alerts.outOfStock.join(', ') }}
+    </p>
+  </aside>
+</template>
+
+<script lang="ts">
+import { defineComponent } from 'vue'
+import type { MachineAlerts } from '@/modules/machine/api/getMachineState'
+
+export default defineComponent({
+  name: 'MachineControlPanel',
+  props: {
+    selectedSlotCode: {
+      type: String,
+      default: '',
+    },
+    enteredCode: {
+      type: String,
+      default: '',
+    },
+    displayName: {
+      type: String,
+      required: true,
+    },
+    displayPrice: {
+      type: String,
+      required: true,
+    },
+    balanceDisplay: {
+      type: String,
+      required: true,
+    },
+    requiredDisplay: {
+      type: String,
+      required: true,
+    },
+    showNegative: {
+      type: Boolean,
+      default: false,
+    },
+    selectionState: {
+      type: String as () => 'idle' | 'ready' | 'unavailable',
+      required: true,
+    },
+    keypadButtons: {
+      type: Array as () => string[][],
+      required: true,
+    },
+    alerts: {
+      type: Object as () => MachineAlerts,
+      required: true,
+    },
+    error: {
+      type: String,
+      default: null,
+    },
+    loading: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  emits: ['keypad'],
+})
+</script>
+
+<style scoped>
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: linear-gradient(155deg, #0f172a 0%, #1e293b 60%, #0b1220 100%);
+  border-radius: 24px;
+  padding: 1.75rem;
+  color: white;
+  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.45);
+}
+
+.product-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 18px;
+  padding: 1.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  position: relative;
+  overflow: hidden;
+  min-height: 240px;
+}
+
+.product-display__header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: #cbd5f5;
+}
+
+.product-display__name {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.product-display__price {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #60a5fa;
+}
+
+.product-display__status {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.product-display__status div {
+  display: flex;
+  justify-content: space-between;
+  color: #cbd5f5;
+}
+
+.product-display__status dd {
+  margin: 0;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.product-display__status dd.negative {
+  color: #f87171;
+}
+
+.product-display__marquee {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  background: rgba(15, 23, 42, 0.82);
+  pointer-events: none;
+}
+
+.product-display__warning {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  border-radius: 16px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fde68a;
+  text-align: center;
+  font-weight: 600;
+  padding: 1.25rem;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.4);
+  pointer-events: none;
+}
+
+.product-display__warning p {
+  margin: 0;
+}
+
+.warning-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f97316 0%, #fb923c 100%);
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.35);
+}
+
+.marquee-track {
+  display: inline-flex;
+  animation: marquee 12s linear infinite;
+  white-space: nowrap;
+  color: #cbd5f5;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.marquee-track span {
+  padding-right: 1.5rem;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.keypad {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.keypad-row {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.keypad-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  font-size: 1.1rem;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.keypad-key:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 14px rgba(15, 23, 42, 0.2);
+}
+
+.keypad-key:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.coin-insert {
+  height: 100px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+  box-shadow: inset 0 12px 24px rgba(148, 163, 184, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.coin-insert::before {
+  content: '';
+  width: 60px;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0f172a 0%, #1f2937 100%);
+  box-shadow: inset 0 3px 8px rgba(15, 23, 42, 0.45);
+}
+
+.actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.action {
+  border: none;
+  border-radius: 14px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: not-allowed;
+}
+
+.action.primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+}
+
+.action.secondary {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5f5;
+}
+
+.coin-slot {
+  height: 160px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #111827 0%, #050a13 100%);
+  box-shadow: inset 0 18px 32px rgba(0, 0, 0, 0.45);
+}
+
+.inline-alert {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.inline-alert.error {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fecaca;
+}
+
+.inline-alert.warning {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fde68a;
+}
+
+@media (max-width: 1024px) {
+  .control-panel {
+    order: -1;
+  }
+}
+</style>
