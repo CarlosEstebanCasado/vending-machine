@@ -66,7 +66,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, type PropType } from 'vue'
 import type { MachineAlerts } from '@/modules/machine/api/getMachineState'
 
 export default defineComponent({
@@ -105,15 +105,15 @@ export default defineComponent({
       required: true,
     },
     keypadButtons: {
-      type: Array as () => string[][],
+      type: Array as PropType<string[][]>,
       required: true,
     },
     alerts: {
-      type: Object as () => MachineAlerts,
+      type: Object as PropType<MachineAlerts>,
       required: true,
     },
     error: {
-      type: String,
+      type: String as PropType<string | null>,
       default: null,
     },
     loading: {

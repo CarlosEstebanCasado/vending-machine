@@ -57,7 +57,8 @@ Full vending machine simulation: customer purchases and administrative managemen
 
 ## Local Quality Checks
 - Run backend quality checks inside Docker: `make backend-ci`
-- Mirror the GitHub Actions flow with host tooling: `./scripts/run-backend-ci.sh`
+- Run frontend quality checks inside Docker: `make frontend-ci`
+- Mirror the backend GitHub Actions flow with host tooling: `./scripts/run-backend-ci.sh`
 
 ## Domain Models
 - `Product`: identity, name, price, status, slot metadata, inventory counts; emits restock/out-of-stock events.

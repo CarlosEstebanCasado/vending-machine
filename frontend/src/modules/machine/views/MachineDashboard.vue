@@ -89,29 +89,36 @@ export default defineComponent({
     rawSelection(): MachineCatalogItem | undefined {
       return this.productCards.find((item) => item.slotCode === this.selectedSlotCode)
     },
+    selectedProduct(): MachineCatalogItem | null {
+      const product = this.rawSelection
+
+      if (!product) {
+        return null
+      }
+
+      if (!product.productId || product.status !== 'available') {
+        return null
+      }
+
+      return product
+    },
     selectionState(): 'idle' | 'ready' | 'unavailable' {
       if (!this.selectedSlotCode) {
         return 'idle'
       }
 
-      if (!this.rawSelection) {
-        return 'unavailable'
-      }
-
-      if (!this.rawSelection.productId || this.rawSelection.status !== 'available') {
-        return 'unavailable'
-      }
-
-      return 'ready'
-    },
-    selectedProduct(): MachineCatalogItem | null {
-      return this.selectionState === 'ready' ? (this.rawSelection as MachineCatalogItem) : null
+      return this.selectedProduct ? 'ready' : 'unavailable'
     },
     balanceAmount(): number {
       return this.session?.balanceCents ?? 0
     },
     requiredAmount(): number {
-      return this.selectedProduct?.priceCents ?? 0
+      const product = this.selectedProduct
+      if (product?.priceCents === null || product?.priceCents === undefined) {
+        return 0
+      }
+
+      return product.priceCents
     },
     showPrompt(): boolean {
       return this.selectionState === 'idle'
@@ -124,15 +131,17 @@ export default defineComponent({
         return 'Product unavailable'
       }
 
-      if (this.selectedProduct) {
-        return this.selectedProduct.productName ?? 'Product'
+      const product = this.selectedProduct
+      if (product) {
+        return product.productName ?? 'Product'
       }
 
       return 'Select a product'
     },
     displayPriceText(): string {
-      if (this.selectionState === 'ready' && this.selectedProduct?.priceCents !== null) {
-        return this.centsToCurrency(this.selectedProduct.priceCents)
+      const product = this.selectedProduct
+      if (product?.priceCents !== null && product?.priceCents !== undefined) {
+        return this.centsToCurrency(product.priceCents)
       }
 
       return '—'

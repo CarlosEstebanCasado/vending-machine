@@ -27,14 +27,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, type PropType } from 'vue'
 import type { MachineCatalogItem } from '@/modules/machine/api/getMachineState'
 
 export default defineComponent({
   name: 'MachineProductGrid',
   props: {
     products: {
-      type: Array as () => MachineCatalogItem[],
+      type: Array as PropType<MachineCatalogItem[]>,
       required: true,
     },
     selectedSlotCode: {
@@ -56,9 +56,9 @@ export default defineComponent({
         minimumFractionDigits: 2,
       }).format(cents / 100)
     },
-    imageSrc(item: MachineCatalogItem): string | null {
+    imageSrc(item: MachineCatalogItem): string | undefined {
       if (!item.productName) {
-        return null
+        return undefined
       }
 
       const map: Record<string, string> = {
@@ -67,7 +67,7 @@ export default defineComponent({
         'Orange Juice': '/orange-juice.png',
       }
 
-      return map[item.productName] ?? null
+      return map[item.productName]
     },
   },
 })
