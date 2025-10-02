@@ -10,7 +10,9 @@
       }"
       @click="$emit('select', item.slotCode)"
     >
-      <div class="product-card__image" :class="imageClass(item.productId)"></div>
+      <div class="product-card__image">
+        <img v-if="imageSrc(item)" :src="imageSrc(item)" :alt="item.productName ?? 'Empty slot'" />
+      </div>
       <div class="product-card__info">
         <span class="product-card__slot">{{ item.slotCode }}</span>
         <div class="product-card__details">
@@ -54,17 +56,18 @@ export default defineComponent({
         minimumFractionDigits: 2,
       }).format(cents / 100)
     },
-    imageClass(productId: string | null): string {
-      switch (productId) {
-        case 'prod-water':
-          return 'product-water'
-        case 'prod-soda':
-          return 'product-soda'
-        case 'prod-juice':
-          return 'product-juice'
-        default:
-          return 'product-empty'
+    imageSrc(item: MachineCatalogItem): string | null {
+      if (!item.productName) {
+        return null
       }
+
+      const map: Record<string, string> = {
+        Water: '/watter.png',
+        Soda: '/soda.png',
+        'Orange Juice': '/orange-juice.png',
+      }
+
+      return map[item.productName] ?? null
     },
   },
 })
@@ -107,19 +110,13 @@ export default defineComponent({
   overflow: hidden;
 }
 
-.product-water {
-  background: linear-gradient(180deg, #93c5fd 0%, #3b82f6 100%);
+.product-card__image img {
+  width: 90%;
+  height: auto;
+  object-fit: contain;
 }
 
-.product-soda {
-  background: linear-gradient(180deg, #fca5a5 0%, #ef4444 100%);
-}
-
-.product-juice {
-  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
-}
-
-.product-empty {
+.product-card--empty .product-card__image {
   background: repeating-linear-gradient(135deg, #e2e8f0, #e2e8f0 12px, #cbd5e1 12px, #cbd5e1 24px);
 }
 
