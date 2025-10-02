@@ -12,7 +12,7 @@ final class GetMachineStateQueryHandler
     {
     }
 
-    public function __invoke(): MachineStateView
+    public function handle(): MachineStateView
     {
         return $this->provider->currentState();
     }

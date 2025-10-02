@@ -18,7 +18,7 @@ final class MachineStateController extends AbstractController
     #[Route('/machine/state', name: 'api_machine_state', methods: ['GET'])]
     public function __invoke(): JsonResponse
     {
-        $view = ($this->handler)();
+        $view = $this->handler->handle();
 
         return new JsonResponse($view->toArray());
     }

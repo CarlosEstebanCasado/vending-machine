@@ -41,7 +41,7 @@ final class GetMachineStateQueryHandlerTest extends TestCase
 
         $handler = new GetMachineStateQueryHandler($provider);
 
-        $result = $handler();
+        $result = $handler->handle();
 
         self::assertSame($expectedView, $result);
     }

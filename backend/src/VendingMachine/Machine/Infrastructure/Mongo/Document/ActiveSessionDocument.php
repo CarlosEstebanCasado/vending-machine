@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Machine\Infrastructure\Mongo\Document;
 
+use App\VendingMachine\Session\Domain\ValueObject\VendingSessionState;
+use App\VendingMachine\Session\Domain\VendingSession;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
 
@@ -17,7 +19,7 @@ class ActiveSessionDocument
     private ?string $sessionId = null;
 
     #[ODM\Field(type: 'string')]
-    private string $state = 'collecting';
+    private string $state = VendingSessionState::Collecting->value;
 
     #[ODM\Field(type: 'int')]
     private int $balanceCents = 0;
@@ -102,5 +104,16 @@ class ActiveSessionDocument
     public function updatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function applySession(VendingSession $session): void
+    {
+        $this->sessionId = $session->id()->value();
+        $this->state = $session->state()->value;
+        $this->balanceCents = $session->balance()->amountInCents();
+        $this->insertedCoins = array_map('intval', $session->insertedCoins()->toArray());
+        $this->selectedProductId = $session->selectedProductId()?->value();
+        $this->changePlan = null;
+        $this->updatedAt = new DateTimeImmutable();
     }
 }

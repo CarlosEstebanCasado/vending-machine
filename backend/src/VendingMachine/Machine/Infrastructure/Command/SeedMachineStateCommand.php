@@ -7,6 +7,7 @@ namespace App\VendingMachine\Machine\Infrastructure\Command;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
+use App\VendingMachine\Session\Domain\ValueObject\VendingSessionState;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -163,7 +164,7 @@ final class SeedMachineStateCommand extends Command
         $session = new ActiveSessionDocument(
             machineId: $this->machineId,
             sessionId: null,
-            state: 'collecting',
+            state: VendingSessionState::Collecting->value,
             balanceCents: 0,
             insertedCoins: [],
             selectedProductId: null,
