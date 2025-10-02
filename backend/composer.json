@@ -69,7 +69,7 @@
         ],
         "lint": "PHP_CS_FIXER_FUTURE_MODE=1 php-cs-fixer fix --dry-run --diff",
         "lint:fix": "PHP_CS_FIXER_FUTURE_MODE=1 php-cs-fixer fix",
-        "phpstan": "phpstan analyse src",
+        "phpstan": "phpstan analyse src --memory-limit=512M",
         "test": "phpunit"
     },
     "conflict": {

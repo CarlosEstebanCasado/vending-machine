@@ -8,7 +8,7 @@ use App\VendingMachine\Inventory\Domain\ValueObject\SlotCode;
 
 final class SlotCodeMother
 {
-    private const CODES = ['A1', 'B2', 'C3', 'D4'];
+    private const CODES = ['11', '12', '21', '22'];
 
     public static function random(): SlotCode
     {

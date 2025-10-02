@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Unit\VendingMachine\CoinInventory\Domain;
 
 use App\Shared\Money\Domain\Money;
-use App\Tests\Unit\VendingMachine\CoinInventory\Domain\CoinInventoryMother;
 use App\Tests\Unit\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundleMother;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinDenomination;
 use DomainException;

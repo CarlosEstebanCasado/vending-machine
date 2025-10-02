@@ -8,7 +8,6 @@ use App\VendingMachine\Inventory\Domain\ValueObject\SlotStatus;
 
 final class SlotStatusMother
 {
-    /** @return SlotStatus */
     public static function random(): SlotStatus
     {
         $statuses = SlotStatus::cases();

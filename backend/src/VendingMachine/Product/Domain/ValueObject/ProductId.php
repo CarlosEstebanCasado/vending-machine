@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Product\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class ProductId
 {
     private function __construct(private readonly string $value)
     {
         $trimmed = trim($value);
         if ('' === $trimmed) {
-            throw new \InvalidArgumentException('Product id cannot be empty.');
+            throw new InvalidArgumentException('Product id cannot be empty.');
         }
     }
 

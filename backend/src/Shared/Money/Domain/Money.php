@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Shared\Money\Domain;
 
+use InvalidArgumentException;
+
 final class Money
 {
     private int $amountInCents;
@@ -11,7 +13,7 @@ final class Money
     private function __construct(int $amountInCents)
     {
         if ($amountInCents < 0) {
-            throw new \InvalidArgumentException('Amount cannot be negative.');
+            throw new InvalidArgumentException('Amount cannot be negative.');
         }
 
         $this->amountInCents = $amountInCents;
@@ -35,7 +37,7 @@ final class Money
     public function subtract(self $other): self
     {
         if ($other->amountInCents > $this->amountInCents) {
-            throw new \InvalidArgumentException('Resulting amount cannot be negative.');
+            throw new InvalidArgumentException('Resulting amount cannot be negative.');
         }
 
         return new self($this->amountInCents - $other->amountInCents);

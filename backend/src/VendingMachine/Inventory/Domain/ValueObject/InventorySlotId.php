@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Inventory\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class InventorySlotId
 {
     private function __construct(private readonly string $value)
     {
         $trimmed = trim($value);
         if ('' === $trimmed) {
-            throw new \InvalidArgumentException('Inventory slot id cannot be empty.');
+            throw new InvalidArgumentException('Inventory slot id cannot be empty.');
         }
     }
 

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Inventory\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class RestockThreshold
 {
     private function __construct(private int $value)
     {
         if ($value < 0) {
-            throw new \InvalidArgumentException('Restock threshold cannot be negative.');
+            throw new InvalidArgumentException('Restock threshold cannot be negative.');
         }
     }
 

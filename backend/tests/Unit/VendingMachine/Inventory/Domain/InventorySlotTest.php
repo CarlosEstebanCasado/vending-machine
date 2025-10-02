@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Inventory\Domain;
 
-use App\Tests\Unit\VendingMachine\Inventory\Domain\InventorySlotMother;
 use App\Tests\Unit\VendingMachine\Product\Domain\ValueObject\ProductIdMother;
 use App\VendingMachine\Inventory\Domain\ValueObject\RestockThreshold;
 use App\VendingMachine\Inventory\Domain\ValueObject\SlotCapacity;

@@ -55,6 +55,10 @@ Full vending machine simulation: customer purchases and administrative managemen
 - Switch to service mode to temporarily disable vending, register maintenance, and synchronize critical changes.
 - Run scheduled or automated tasks (reconciliations, report generation, session/log cleanup).
 
+## Local Quality Checks
+- Run backend quality checks inside Docker: `make backend-ci`
+- Mirror the GitHub Actions flow with host tooling: `./scripts/run-backend-ci.sh`
+
 ## Domain Models
 - `Product`: identity, name, price, status, slot metadata, inventory counts; emits restock/out-of-stock events.
 - `Money` and derivatives (`Coin`, `MoneyBalance`, `CoinBundle`): value objects representing accepted denominations and safe arithmetic.
@@ -95,7 +99,7 @@ All monetary amounts are stored in cents (`int32`) to avoid precision issues.
 
 ### Collection: `inventory_slots`
 - `_id` (`ObjectId`)
-- `slot_code` (`string`) — physical label (e.g., "A1")
+- `slot_code` (`string`) — physical label (e.g., "11")
 - `product_id` (`ObjectId|null`) — current product reference
 - `capacity` (`int32`)
 - `quantity` (`int32`)

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Product\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class ProductName
 {
     private const MAX_LENGTH = 100;
@@ -12,11 +14,11 @@ final class ProductName
     {
         $trimmed = trim($value);
         if ('' === $trimmed) {
-            throw new \InvalidArgumentException('Product name cannot be empty.');
+            throw new InvalidArgumentException('Product name cannot be empty.');
         }
 
         if (mb_strlen($trimmed) > self::MAX_LENGTH) {
-            throw new \InvalidArgumentException(sprintf('Product name cannot exceed %d characters.', self::MAX_LENGTH));
+            throw new InvalidArgumentException(sprintf('Product name cannot exceed %d characters.', self::MAX_LENGTH));
         }
 
         $this->value = $trimmed;

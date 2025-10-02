@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\CoinInventory\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class CoinQuantity
 {
     private function __construct(private int $value)
     {
         if ($value < 0) {
-            throw new \InvalidArgumentException('Coin quantity cannot be negative.');
+            throw new InvalidArgumentException('Coin quantity cannot be negative.');
         }
     }
 
@@ -31,7 +33,7 @@ final class CoinQuantity
     public function subtract(self $other): self
     {
         if ($other->value > $this->value) {
-            throw new \InvalidArgumentException('Cannot subtract more coins than available.');
+            throw new InvalidArgumentException('Cannot subtract more coins than available.');
         }
 
         return new self($this->value - $other->value);

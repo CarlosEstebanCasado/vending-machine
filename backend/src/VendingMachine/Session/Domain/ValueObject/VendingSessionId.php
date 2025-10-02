@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Session\Domain\ValueObject;
 
+use InvalidArgumentException;
+
 final class VendingSessionId
 {
     private string $value;
@@ -12,7 +14,7 @@ final class VendingSessionId
     {
         $trimmed = trim($value);
         if ('' === $trimmed) {
-            throw new \InvalidArgumentException('Session id cannot be empty.');
+            throw new InvalidArgumentException('Session id cannot be empty.');
         }
 
         $this->value = $trimmed;
