@@ -41,6 +41,9 @@ backend-test: ## Execute backend test suite inside Docker
 backend-ci: ## Run full backend quality checks inside Docker
 	$(COMPOSE) --profile dev run --rm backend bash -lc "set -euo pipefail; composer validate --strict; composer install --no-interaction --no-progress --prefer-dist; composer run lint; composer run phpstan; APP_ENV=test APP_DEBUG=0 composer run test"
 
+backend-seed: ## Seed Mongo projections for the vending machine
+	$(COMPOSE) --profile dev run --rm backend php bin/console app:seed-machine-state
+
 frontend-ci: ## Run full frontend quality checks inside Docker
 	$(COMPOSE) --profile dev run --rm frontend sh -ec "set -eu; npm ci; npm run lint; npm run type-check; npm test; npm run build"
 

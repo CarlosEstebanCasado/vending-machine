@@ -60,6 +60,9 @@ Full vending machine simulation: customer purchases and administrative managemen
 - Run frontend quality checks inside Docker: `make frontend-ci`
 - Mirror the backend GitHub Actions flow with host tooling: `./scripts/run-backend-ci.sh`
 
+## Utilities
+- Seed Mongo projections for the default machine: `make backend-seed`
+
 ## Domain Models
 - `Product`: identity, name, price, status, slot metadata, inventory counts; emits restock/out-of-stock events.
 - `Money` and derivatives (`Coin`, `MoneyBalance`, `CoinBundle`): value objects representing accepted denominations and safe arithmetic.
