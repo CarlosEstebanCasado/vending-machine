@@ -30,7 +30,7 @@
         :selection-state="selectionState"
         :keypad-buttons="keypadButtons"
         :alerts="alerts"
-        :error="error"
+        :error="panelError"
         :loading="loading"
         @keypad="handleKeypadPress"
         @insert-coin="handleInsertCoin"
@@ -67,10 +67,44 @@ export default defineComponent({
       enteredCode: '' as string,
       lastConfirmedSlotCode: '' as string,
       selectionTimeoutId: null as number | null,
+      panelError: null as string | null,
+      errorTimeoutId: null as number | null,
     }
+  },
+  watch: {
+    session: {
+      immediate: true,
+      handler(newSession: MachineSession | null) {
+        if (newSession?.selectedSlotCode) {
+          this.selectedSlotCode = newSession.selectedSlotCode
+          this.lastConfirmedSlotCode = newSession.selectedSlotCode
+        } else if (!this.enteredCode) {
+          this.selectedSlotCode = ''
+          this.lastConfirmedSlotCode = ''
+        }
+      },
+    },
+    error: {
+      immediate: true,
+      handler(newError: string | null) {
+        this.clearErrorTimeout()
+
+        if (newError) {
+          this.panelError = newError
+          this.errorTimeoutId = window.setTimeout(() => {
+            this.panelError = null
+            this.machineStore.clearError()
+            this.errorTimeoutId = null
+          }, 5000)
+        } else {
+          this.panelError = null
+        }
+      },
+    },
   },
   beforeUnmount() {
     this.clearSelectionTimeout()
+    this.clearErrorTimeout()
   },
   computed: {
     ...mapStores(useMachineStore),
@@ -276,7 +310,7 @@ export default defineComponent({
       }
 
       try {
-        await this.machineStore.selectProduct(selected.productId)
+        await this.machineStore.selectProduct(selected.productId, selected.slotCode)
         this.lastConfirmedSlotCode = selected.slotCode
         this.clearSelectionTimeout()
         return true
@@ -354,6 +388,12 @@ export default defineComponent({
       if (this.selectionTimeoutId !== null) {
         window.clearTimeout(this.selectionTimeoutId)
         this.selectionTimeoutId = null
+      }
+    },
+    clearErrorTimeout(): void {
+      if (this.errorTimeoutId !== null) {
+        window.clearTimeout(this.errorTimeoutId)
+        this.errorTimeoutId = null
       }
     },
     scheduleSelectionRevert(targetSlotCode: string): void {

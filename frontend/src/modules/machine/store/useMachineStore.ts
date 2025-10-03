@@ -111,7 +111,7 @@ export const useMachineStore = defineStore('machine', {
       this.sessionPromise = promise
       return promise
     },
-    async selectProduct(productId: string): Promise<MachineSession> {
+    async selectProduct(productId: string, slotCode: string): Promise<MachineSession> {
       const activeSession = await this.ensureSession()
 
       this.loading = true
@@ -121,6 +121,7 @@ export const useMachineStore = defineStore('machine', {
         const result = await selectMachineProduct({
           sessionId: activeSession.id,
           productId,
+          slotCode,
         })
 
         if (this.machineState) {
@@ -194,6 +195,9 @@ export const useMachineStore = defineStore('machine', {
       } finally {
         this.loading = false
       }
+    },
+    clearError(): void {
+      this.error = null
     },
   },
 })

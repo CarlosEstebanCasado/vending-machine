@@ -15,6 +15,7 @@ const mockMachineState = (): MachineState => ({
     balanceCents: 125,
     insertedCoins: { 100: 1, 25: 1 },
     selectedProductId: 'prod-water',
+    selectedSlotCode: '11',
     changePlan: { 25: 2 },
   },
   catalog: [
@@ -79,6 +80,7 @@ describe('useMachineStore', () => {
         ...initialState.session!,
         balanceCents: 225,
         insertedCoins: { 100: 2, 25: 1 },
+        selectedSlotCode: '11',
       },
     }
 
@@ -96,6 +98,15 @@ describe('useMachineStore', () => {
     })
     expect(store.machineState?.session?.balanceCents).toBe(225)
     expect(store.machineState?.session?.insertedCoins).toEqual({ 100: 2, 25: 1 })
+    expect(store.error).toBeNull()
+  })
+
+  it('clears error when clearError is called', () => {
+    const store = useMachineStore()
+    store.error = 'Something went wrong'
+
+    store.clearError()
+
     expect(store.error).toBeNull()
   })
 })
