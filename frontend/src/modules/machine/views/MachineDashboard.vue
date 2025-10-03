@@ -64,7 +64,12 @@ export default defineComponent({
     return {
       selectedSlotCode: '' as string,
       enteredCode: '' as string,
+      lastConfirmedSlotCode: '' as string,
+      selectionTimeoutId: null as number | null,
     }
+  },
+  beforeUnmount() {
+    this.clearSelectionTimeout()
   },
   computed: {
     ...mapStores(useMachineStore),
@@ -224,19 +229,24 @@ export default defineComponent({
 
       const previousSlot = this.selectedSlotCode
       this.selectedSlotCode = slotCode
+      this.clearSelectionTimeout()
 
       const selected = this.productCards.find((item) => item.slotCode === slotCode)
 
       if (!selected || !selected.productId || selected.status !== 'available') {
+        this.scheduleSelectionRevert(this.lastConfirmedSlotCode || '')
         return true
       }
 
       try {
         await this.machineStore.selectProduct(selected.productId)
+        this.lastConfirmedSlotCode = selected.slotCode
+        this.clearSelectionTimeout()
         return true
       } catch (error) {
         console.error('Failed to update selected product', error)
         this.selectedSlotCode = previousSlot
+        this.clearSelectionTimeout()
         return false
       }
     },
@@ -266,7 +276,6 @@ export default defineComponent({
       }
 
       if (this.hasPartialMatch(candidate)) {
-        this.selectedSlotCode = ''
         return
       }
 
@@ -279,6 +288,7 @@ export default defineComponent({
       }
 
       this.selectedSlotCode = candidate
+      this.scheduleSelectionRevert(this.lastConfirmedSlotCode || '')
     },
     findSlotByCode(code: string): MachineCatalogItem | undefined {
       return this.productCards.find((item) => item.slotCode === code)
@@ -294,12 +304,28 @@ export default defineComponent({
     resetSelection(): void {
       this.resetEnteredCode()
       this.selectedSlotCode = ''
+      this.lastConfirmedSlotCode = ''
+      this.clearSelectionTimeout()
     },
     resetEnteredCode(): void {
       this.enteredCode = ''
     },
     canProcessKeypad(value: string): boolean {
       return value !== '' && !this.loading
+    },
+    clearSelectionTimeout(): void {
+      if (this.selectionTimeoutId !== null) {
+        window.clearTimeout(this.selectionTimeoutId)
+        this.selectionTimeoutId = null
+      }
+    },
+    scheduleSelectionRevert(targetSlotCode: string): void {
+      this.clearSelectionTimeout()
+
+      this.selectionTimeoutId = window.setTimeout(() => {
+        this.selectedSlotCode = targetSlotCode
+        this.selectionTimeoutId = null
+      }, 5000)
     },
   },
 })
