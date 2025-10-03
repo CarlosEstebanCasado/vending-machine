@@ -32,6 +32,7 @@ final class StartSessionCommandHandler
                 balanceCents: 0,
                 insertedCoins: [],
                 selectedProductId: null,
+                selectedSlotCode: null,
                 changePlan: null,
             );
 
@@ -48,6 +49,7 @@ final class StartSessionCommandHandler
             balanceCents: $session->balance()->amountInCents(),
             insertedCoins: $session->insertedCoins()->toArray(),
             selectedProductId: $session->selectedProductId()?->value(),
+            selectedSlotCode: null,
         );
     }
 }

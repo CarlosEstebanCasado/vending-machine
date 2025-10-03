@@ -2,22 +2,23 @@
 
 declare(strict_types=1);
 
-namespace App\VendingMachine\Session\Application\SelectProduct;
+namespace App\VendingMachine\Session\Application\InsertCoin;
 
+use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinDenomination;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
-use App\VendingMachine\Product\Domain\ValueObject\ProductId;
 use App\VendingMachine\Session\Application\StartSession\StartSessionResult;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use DomainException;
+use ValueError;
 
-final class SelectProductCommandHandler
+final class InsertCoinCommandHandler
 {
     public function __construct(
         private readonly DocumentManager $documentManager,
     ) {
     }
 
-    public function handle(SelectProductCommand $command): StartSessionResult
+    public function handle(InsertCoinCommand $command): StartSessionResult
     {
         /** @var ActiveSessionDocument|null $document */
         $document = $this->documentManager->find(ActiveSessionDocument::class, $command->machineId);
@@ -30,10 +31,16 @@ final class SelectProductCommandHandler
             throw new DomainException('The provided session id does not match the active session.');
         }
 
-        $session = $document->toVendingSession();
-        $session->selectProduct(ProductId::fromString($command->productId));
+        try {
+            $denomination = CoinDenomination::from($command->denomination);
+        } catch (ValueError $exception) {
+            throw new DomainException('Unsupported coin denomination.', 0, $exception);
+        }
 
-        $document->applySession($session, $command->slotCode);
+        $session = $document->toVendingSession();
+        $session->insertCoin($denomination);
+
+        $document->applySession($session);
 
         $this->documentManager->flush();
 

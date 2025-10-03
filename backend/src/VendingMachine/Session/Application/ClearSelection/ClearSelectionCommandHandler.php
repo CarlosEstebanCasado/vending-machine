@@ -2,22 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\VendingMachine\Session\Application\SelectProduct;
+namespace App\VendingMachine\Session\Application\ClearSelection;
 
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
-use App\VendingMachine\Product\Domain\ValueObject\ProductId;
 use App\VendingMachine\Session\Application\StartSession\StartSessionResult;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use DomainException;
 
-final class SelectProductCommandHandler
+final class ClearSelectionCommandHandler
 {
-    public function __construct(
-        private readonly DocumentManager $documentManager,
-    ) {
+    public function __construct(private readonly DocumentManager $documentManager)
+    {
     }
 
-    public function handle(SelectProductCommand $command): StartSessionResult
+    public function handle(ClearSelectionCommand $command): StartSessionResult
     {
         /** @var ActiveSessionDocument|null $document */
         $document = $this->documentManager->find(ActiveSessionDocument::class, $command->machineId);
@@ -31,9 +29,9 @@ final class SelectProductCommandHandler
         }
 
         $session = $document->toVendingSession();
-        $session->selectProduct(ProductId::fromString($command->productId));
+        $session->clearSelection();
 
-        $document->applySession($session, $command->slotCode);
+        $document->applySession($session, null);
 
         $this->documentManager->flush();
 

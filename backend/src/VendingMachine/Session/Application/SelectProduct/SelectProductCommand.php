@@ -10,6 +10,7 @@ final class SelectProductCommand
         public readonly string $machineId,
         public readonly string $sessionId,
         public readonly string $productId,
+        public readonly string $slotCode,
     ) {
     }
 }

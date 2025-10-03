@@ -3,6 +3,8 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useMachineStore } from '@/modules/machine/store/useMachineStore'
 import type { MachineState } from '@/modules/machine/api/getMachineState'
 import * as machineApi from '@/modules/machine/api/getMachineState'
+import * as insertCoinApi from '@/modules/machine/api/insertMachineCoin'
+import * as startSessionApi from '@/modules/machine/api/startMachineSession'
 
 const mockMachineState = (): MachineState => ({
   machineId: 'vm-001',
@@ -13,6 +15,7 @@ const mockMachineState = (): MachineState => ({
     balanceCents: 125,
     insertedCoins: { 100: 1, 25: 1 },
     selectedProductId: 'prod-water',
+    selectedSlotCode: '11',
     changePlan: { 25: 2 },
   },
   catalog: [
@@ -67,5 +70,43 @@ describe('useMachineStore', () => {
     expect(store.machineState).toBeNull()
     expect(store.error).toBe('Network error')
     expect(store.loading).toBe(false)
+  })
+
+  it('inserts coin and updates session from API response', async () => {
+    const initialState = mockMachineState()
+    const sessionResult = {
+      machineId: 'vm-001',
+      session: {
+        ...initialState.session!,
+        balanceCents: 225,
+        insertedCoins: { 100: 2, 25: 1 },
+        selectedSlotCode: '11',
+      },
+    }
+
+    vi.spyOn(startSessionApi, 'startMachineSession').mockResolvedValue(sessionResult)
+    vi.spyOn(insertCoinApi, 'insertMachineCoin').mockResolvedValue(sessionResult)
+
+    const store = useMachineStore()
+    store.machineState = initialState
+
+    await store.insertCoin(100)
+
+    expect(insertCoinApi.insertMachineCoin).toHaveBeenCalledWith({
+      sessionId: initialState.session!.id,
+      denominationCents: 100,
+    })
+    expect(store.machineState?.session?.balanceCents).toBe(225)
+    expect(store.machineState?.session?.insertedCoins).toEqual({ 100: 2, 25: 1 })
+    expect(store.error).toBeNull()
+  })
+
+  it('clears error when clearError is called', () => {
+    const store = useMachineStore()
+    store.error = 'Something went wrong'
+
+    store.clearError()
+
+    expect(store.error).toBeNull()
   })
 })

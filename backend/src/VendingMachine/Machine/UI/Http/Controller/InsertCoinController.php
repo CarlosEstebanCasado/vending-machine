@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Machine\UI\Http\Controller;
 
-use App\VendingMachine\Session\Application\SelectProduct\SelectProductCommand;
-use App\VendingMachine\Session\Application\SelectProduct\SelectProductCommandHandler;
+use App\VendingMachine\Session\Application\InsertCoin\InsertCoinCommand;
+use App\VendingMachine\Session\Application\InsertCoin\InsertCoinCommandHandler;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,25 +14,24 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 
-final class SelectProductController extends AbstractController
+final class InsertCoinController extends AbstractController
 {
     public function __construct(
-        private readonly SelectProductCommandHandler $handler,
+        private readonly InsertCoinCommandHandler $handler,
         #[Autowire('%app.machine_id%')] private readonly string $machineId,
     ) {
     }
 
-    #[Route('/machine/session/product', name: 'api_machine_session_select_product', methods: ['POST'])]
+    #[Route('/machine/session/coin', name: 'api_machine_session_insert_coin', methods: ['POST'])]
     public function __invoke(Request $request): JsonResponse
     {
         $payload = $this->decodeRequest($request);
 
         $result = $this->handler->handle(
-            new SelectProductCommand(
+            new InsertCoinCommand(
                 machineId: $this->machineId,
                 sessionId: $payload['session_id'],
-                productId: $payload['product_id'],
-                slotCode: $payload['slot_code'],
+                denomination: $payload['denomination_cents'],
             )
         );
 
@@ -50,7 +49,7 @@ final class SelectProductController extends AbstractController
     }
 
     /**
-     * @return array{session_id: string, product_id: string, slot_code: string}
+     * @return array{session_id: string, denomination_cents: int}
      */
     private function decodeRequest(Request $request): array
     {
@@ -60,18 +59,13 @@ final class SelectProductController extends AbstractController
             throw new BadRequestHttpException('Missing or invalid "session_id".');
         }
 
-        if (!isset($data['product_id']) || !is_string($data['product_id'])) {
-            throw new BadRequestHttpException('Missing or invalid "product_id".');
-        }
-
-        if (!isset($data['slot_code']) || !is_string($data['slot_code'])) {
-            throw new BadRequestHttpException('Missing or invalid "slot_code".');
+        if (!isset($data['denomination_cents']) || !is_int($data['denomination_cents'])) {
+            throw new BadRequestHttpException('Missing or invalid "denomination_cents".');
         }
 
         return [
             'session_id' => $data['session_id'],
-            'product_id' => $data['product_id'],
-            'slot_code' => $data['slot_code'],
+            'denomination_cents' => $data['denomination_cents'],
         ];
     }
 }

@@ -35,6 +35,9 @@ class ActiveSessionDocument
     #[ODM\Field(type: 'string', nullable: true)]
     private ?string $selectedProductId = null;
 
+    #[ODM\Field(type: 'string', nullable: true)]
+    private ?string $selectedSlotCode = null;
+
     #[ODM\Field(type: 'hash', nullable: true)]
     private ?array $changePlan = null;
 
@@ -52,6 +55,7 @@ class ActiveSessionDocument
         int $balanceCents,
         array $insertedCoins,
         ?string $selectedProductId,
+        ?string $selectedSlotCode,
         ?array $changePlan,
         ?DateTimeImmutable $updatedAt = null,
     ) {
@@ -59,9 +63,10 @@ class ActiveSessionDocument
         $this->sessionId = $sessionId;
         $this->state = $state;
         $this->balanceCents = $balanceCents;
-        $this->insertedCoins = array_map('intval', $insertedCoins);
+        $this->insertedCoins = $this->normalizeCoinMap($insertedCoins);
         $this->selectedProductId = $selectedProductId;
-        $this->changePlan = null === $changePlan ? null : array_map('intval', $changePlan);
+        $this->selectedSlotCode = $selectedSlotCode;
+        $this->changePlan = null === $changePlan ? null : $this->normalizeCoinMap($changePlan);
         $this->updatedAt = $updatedAt ?? new DateTimeImmutable();
     }
 
@@ -90,7 +95,7 @@ class ActiveSessionDocument
      */
     public function insertedCoins(): array
     {
-        return array_map('intval', $this->insertedCoins);
+        return $this->normalizeCoinMap($this->insertedCoins);
     }
 
     public function selectedProductId(): ?string
@@ -98,12 +103,17 @@ class ActiveSessionDocument
         return $this->selectedProductId;
     }
 
+    public function selectedSlotCode(): ?string
+    {
+        return $this->selectedSlotCode;
+    }
+
     /**
      * @return array<int, int>|null
      */
     public function changePlan(): ?array
     {
-        return null === $this->changePlan ? null : array_map('intval', $this->changePlan);
+        return null === $this->changePlan ? null : $this->normalizeCoinMap($this->changePlan);
     }
 
     public function updatedAt(): DateTimeImmutable
@@ -111,13 +121,18 @@ class ActiveSessionDocument
         return $this->updatedAt;
     }
 
-    public function applySession(VendingSession $session): void
+    public function applySession(VendingSession $session, ?string $selectedSlotCode = null): void
     {
         $this->sessionId = $session->id()->value();
         $this->state = $session->state()->value;
         $this->balanceCents = $session->balance()->amountInCents();
-        $this->insertedCoins = array_map('intval', $session->insertedCoins()->toArray());
+        $this->insertedCoins = $this->normalizeCoinMap($session->insertedCoins()->toArray());
         $this->selectedProductId = $session->selectedProductId()?->value();
+        if (null !== $selectedSlotCode) {
+            $this->selectedSlotCode = $selectedSlotCode;
+        } elseif (null === $session->selectedProductId()) {
+            $this->selectedSlotCode = null;
+        }
         $this->changePlan = null;
         $this->updatedAt = new DateTimeImmutable();
     }
@@ -131,11 +146,30 @@ class ActiveSessionDocument
         return VendingSession::restore(
             VendingSessionId::fromString($this->sessionId),
             VendingSessionState::from($this->state),
-            CoinBundle::fromArray($this->insertedCoins),
+            CoinBundle::fromArray($this->insertedCoins()),
             Money::fromCents($this->balanceCents),
             null === $this->selectedProductId ? null : ProductId::fromString($this->selectedProductId),
+            null === $this->changePlan ? null : CoinBundle::fromArray($this->changePlan()),
             null,
-            null,
+        );
+    }
+
+    /**
+     * @param array<int|string, int> $coins
+     *
+     * @return array<int, int>
+     */
+    private function normalizeCoinMap(array $coins): array
+    {
+        $normalized = [];
+
+        foreach ($coins as $denomination => $quantity) {
+            $normalized[(int) $denomination] = (int) $quantity;
+        }
+
+        return array_filter(
+            $normalized,
+            static fn (int $quantity): bool => $quantity > 0
         );
     }
 }

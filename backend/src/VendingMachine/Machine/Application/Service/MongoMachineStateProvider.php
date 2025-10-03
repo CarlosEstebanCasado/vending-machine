@@ -75,6 +75,7 @@ final class MongoMachineStateProvider implements MachineStateProvider
             'balance_cents' => $document->balanceCents(),
             'inserted_coins' => $document->insertedCoins(),
             'selected_product_id' => $document->selectedProductId(),
+            'selected_slot_code' => $document->selectedSlotCode(),
             'change_plan' => $document->changePlan(),
         ], $document->updatedAt()];
     }

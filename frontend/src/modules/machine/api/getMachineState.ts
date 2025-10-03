@@ -6,6 +6,7 @@ export interface MachineSession {
   balanceCents: number;
   insertedCoins: Record<number, number>;
   selectedProductId: string | null;
+  selectedSlotCode: string | null;
   changePlan: Record<number, number> | null;
 }
 
@@ -49,6 +50,7 @@ type MachineStateResponse = {
     balance_cents: number;
     inserted_coins: Record<string, number>;
     selected_product_id: string | null;
+    selected_slot_code: string | null;
     change_plan: Record<string, number> | null;
   };
   catalog: Array<{
@@ -90,6 +92,7 @@ function mapResponse(response: MachineStateResponse): MachineState {
             balanceCents: response.session.balance_cents,
             insertedCoins: toNumberRecord(response.session.inserted_coins),
             selectedProductId: response.session.selected_product_id,
+            selectedSlotCode: response.session.selected_slot_code,
             changePlan:
               response.session.change_plan === null
                 ? null

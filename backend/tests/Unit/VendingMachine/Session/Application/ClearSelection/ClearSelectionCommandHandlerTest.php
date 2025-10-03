@@ -2,28 +2,28 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\VendingMachine\Session\Application;
+namespace App\Tests\Unit\VendingMachine\Session\Application\ClearSelection;
 
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
-use App\VendingMachine\Session\Application\SelectProduct\SelectProductCommand;
-use App\VendingMachine\Session\Application\SelectProduct\SelectProductCommandHandler;
+use App\VendingMachine\Session\Application\ClearSelection\ClearSelectionCommand;
+use App\VendingMachine\Session\Application\ClearSelection\ClearSelectionCommandHandler;
 use App\VendingMachine\Session\Domain\ValueObject\VendingSessionState;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use DomainException;
 use PHPUnit\Framework\TestCase;
 
-final class SelectProductCommandHandlerTest extends TestCase
+final class ClearSelectionCommandHandlerTest extends TestCase
 {
-    public function testItAssignsSelectedProductToActiveSession(): void
+    public function testItClearsSelectionInActiveSession(): void
     {
         $document = new ActiveSessionDocument(
             machineId: 'machine-1',
             sessionId: 'session-1',
             state: VendingSessionState::Collecting->value,
-            balanceCents: 0,
-            insertedCoins: [],
-            selectedProductId: null,
-            selectedSlotCode: null,
+            balanceCents: 100,
+            insertedCoins: [100 => 1],
+            selectedProductId: 'product-1',
+            selectedSlotCode: 'A1',
             changePlan: null,
         );
 
@@ -36,14 +36,14 @@ final class SelectProductCommandHandlerTest extends TestCase
         $documentManager->expects(self::once())
             ->method('flush');
 
-        $handler = new SelectProductCommandHandler($documentManager);
+        $handler = new ClearSelectionCommandHandler($documentManager);
 
-        $result = $handler->handle(new SelectProductCommand('machine-1', 'session-1', 'product-1', 'A1'));
+        $result = $handler->handle(new ClearSelectionCommand('machine-1', 'session-1'));
 
-        self::assertSame('product-1', $document->selectedProductId());
-        self::assertSame('product-1', $result->selectedProductId);
-        self::assertSame('A1', $document->selectedSlotCode());
-        self::assertSame('A1', $result->selectedSlotCode);
+        self::assertNull($document->selectedProductId());
+        self::assertNull($document->selectedSlotCode());
+        self::assertNull($result->selectedProductId);
+        self::assertNull($result->selectedSlotCode);
     }
 
     public function testItFailsWhenActiveSessionIsMissing(): void
@@ -54,12 +54,12 @@ final class SelectProductCommandHandlerTest extends TestCase
             ->with(ActiveSessionDocument::class, 'machine-1')
             ->willReturn(null);
 
-        $handler = new SelectProductCommandHandler($documentManager);
+        $handler = new ClearSelectionCommandHandler($documentManager);
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('No active session found for this machine.');
 
-        $handler->handle(new SelectProductCommand('machine-1', 'session-1', 'product-1', 'A1'));
+        $handler->handle(new ClearSelectionCommand('machine-1', 'session-1'));
     }
 
     public function testItFailsWhenSessionIdDoesNotMatch(): void
@@ -81,11 +81,11 @@ final class SelectProductCommandHandlerTest extends TestCase
             ->with(ActiveSessionDocument::class, 'machine-1')
             ->willReturn($document);
 
-        $handler = new SelectProductCommandHandler($documentManager);
+        $handler = new ClearSelectionCommandHandler($documentManager);
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('The provided session id does not match the active session.');
 
-        $handler->handle(new SelectProductCommand('machine-1', 'session-1', 'product-1', 'A1'));
+        $handler->handle(new ClearSelectionCommand('machine-1', 'session-1'));
     }
 }

@@ -25,11 +25,12 @@
         :display-price="displayPriceText"
         :balance-display="balanceDisplay"
         :required-display="requiredDisplay"
-        :show-negative="showNegative"
+        :requirement-label="requirementLabel"
+        :requirement-tone="requirementTone"
         :selection-state="selectionState"
         :keypad-buttons="keypadButtons"
         :alerts="alerts"
-        :error="error"
+        :error="panelError"
         :loading="loading"
         @keypad="handleKeypadPress"
         @insert-coin="handleInsertCoin"
@@ -66,10 +67,44 @@ export default defineComponent({
       enteredCode: '' as string,
       lastConfirmedSlotCode: '' as string,
       selectionTimeoutId: null as number | null,
+      panelError: null as string | null,
+      errorTimeoutId: null as number | null,
     }
+  },
+  watch: {
+    session: {
+      immediate: true,
+      handler(newSession: MachineSession | null) {
+        if (newSession?.selectedSlotCode) {
+          this.selectedSlotCode = newSession.selectedSlotCode
+          this.lastConfirmedSlotCode = newSession.selectedSlotCode
+        } else if (!this.enteredCode) {
+          this.selectedSlotCode = ''
+          this.lastConfirmedSlotCode = ''
+        }
+      },
+    },
+    error: {
+      immediate: true,
+      handler(newError: string | null) {
+        this.clearErrorTimeout()
+
+        if (newError) {
+          this.panelError = newError
+          this.errorTimeoutId = window.setTimeout(() => {
+            this.panelError = null
+            this.machineStore.clearError()
+            this.errorTimeoutId = null
+          }, 5000)
+        } else {
+          this.panelError = null
+        }
+      },
+    },
   },
   beforeUnmount() {
     this.clearSelectionTimeout()
+    this.clearErrorTimeout()
   },
   computed: {
     ...mapStores(useMachineStore),
@@ -157,10 +192,39 @@ export default defineComponent({
         return '—'
       }
 
-      return this.centsToCurrency(this.requiredAmount)
+      const difference = this.differenceAmount
+      const amount = Math.abs(difference)
+
+      return this.centsToCurrency(amount)
     },
-    showNegative(): boolean {
-      return this.selectionState === 'ready' && this.balanceAmount < this.requiredAmount
+    requirementLabel(): string {
+      if (this.selectionState !== 'ready') {
+        return 'Required'
+      }
+
+      return this.differenceAmount > 0 ? 'Required' : 'Change'
+    },
+    requirementTone(): 'neutral' | 'warning' | 'positive' {
+      if (this.selectionState !== 'ready') {
+        return 'neutral'
+      }
+
+      if (this.differenceAmount > 0) {
+        return 'warning'
+      }
+
+      if (this.differenceAmount < 0) {
+        return 'positive'
+      }
+
+      return 'neutral'
+    },
+    differenceAmount(): number {
+      if (this.selectionState !== 'ready') {
+        return 0
+      }
+
+      return this.requiredAmount - this.balanceAmount
     },
     keypadButtons(): string[][] {
       return [
@@ -196,7 +260,7 @@ export default defineComponent({
       }
 
       if (value === 'CLR') {
-        this.resetSelection()
+        await this.handleClearSelection()
         return
       }
 
@@ -208,9 +272,16 @@ export default defineComponent({
       await this.handleNumericKey(value)
     },
     async handleInsertCoin(coinValue: number): Promise<void> {
-      void coinValue
-      await this.ensureSessionReady()
-      // TODO: integrate insert coin command once available
+      const ready = await this.ensureSessionReady()
+      if (!ready) {
+        return
+      }
+
+      try {
+        await this.machineStore.insertCoin(coinValue)
+      } catch (error) {
+        console.error('Failed to insert coin', error)
+      }
     },
     async ensureSessionReady(): Promise<boolean> {
       try {
@@ -239,7 +310,7 @@ export default defineComponent({
       }
 
       try {
-        await this.machineStore.selectProduct(selected.productId)
+        await this.machineStore.selectProduct(selected.productId, selected.slotCode)
         this.lastConfirmedSlotCode = selected.slotCode
         this.clearSelectionTimeout()
         return true
@@ -301,11 +372,28 @@ export default defineComponent({
       this.enteredCode = `${this.enteredCode}${value}`.slice(0, maxCodeLength)
       return this.enteredCode
     },
-    resetSelection(): void {
+    async handleClearSelection(): Promise<void> {
       this.resetEnteredCode()
+
+      const hadSelection = Boolean(this.lastConfirmedSlotCode || this.selectedSlotCode)
+
+      if (hadSelection) {
+        const ready = await this.ensureSessionReady()
+        if (ready) {
+          try {
+            await this.machineStore.clearSelection()
+          } catch (error) {
+            console.error('Failed to clear selection', error)
+          }
+        }
+      }
+
       this.selectedSlotCode = ''
       this.lastConfirmedSlotCode = ''
       this.clearSelectionTimeout()
+    },
+    resetSelection(): void {
+      void this.handleClearSelection()
     },
     resetEnteredCode(): void {
       this.enteredCode = ''
@@ -317,6 +405,12 @@ export default defineComponent({
       if (this.selectionTimeoutId !== null) {
         window.clearTimeout(this.selectionTimeoutId)
         this.selectionTimeoutId = null
+      }
+    },
+    clearErrorTimeout(): void {
+      if (this.errorTimeoutId !== null) {
+        window.clearTimeout(this.errorTimeoutId)
+        this.errorTimeoutId = null
       }
     },
     scheduleSelectionRevert(targetSlotCode: string): void {
