@@ -32,6 +32,7 @@ final class SelectProductController extends AbstractController
                 machineId: $this->machineId,
                 sessionId: $payload['session_id'],
                 productId: $payload['product_id'],
+                slotCode: $payload['slot_code'],
             )
         );
 
@@ -43,12 +44,13 @@ final class SelectProductController extends AbstractController
                 'balance_cents' => $result->balanceCents,
                 'inserted_coins' => $result->insertedCoins,
                 'selected_product_id' => $result->selectedProductId,
+                'selected_slot_code' => $result->selectedSlotCode,
             ],
         ], Response::HTTP_OK);
     }
 
     /**
-     * @return array{session_id: string, product_id: string}
+     * @return array{session_id: string, product_id: string, slot_code: string}
      */
     private function decodeRequest(Request $request): array
     {
@@ -62,9 +64,14 @@ final class SelectProductController extends AbstractController
             throw new BadRequestHttpException('Missing or invalid "product_id".');
         }
 
+        if (!isset($data['slot_code']) || !is_string($data['slot_code'])) {
+            throw new BadRequestHttpException('Missing or invalid "slot_code".');
+        }
+
         return [
             'session_id' => $data['session_id'],
             'product_id' => $data['product_id'],
+            'slot_code' => $data['slot_code'],
         ];
     }
 }

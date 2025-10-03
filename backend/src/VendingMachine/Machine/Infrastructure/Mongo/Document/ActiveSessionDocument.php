@@ -35,6 +35,9 @@ class ActiveSessionDocument
     #[ODM\Field(type: 'string', nullable: true)]
     private ?string $selectedProductId = null;
 
+    #[ODM\Field(type: 'string', nullable: true)]
+    private ?string $selectedSlotCode = null;
+
     #[ODM\Field(type: 'hash', nullable: true)]
     private ?array $changePlan = null;
 
@@ -52,6 +55,7 @@ class ActiveSessionDocument
         int $balanceCents,
         array $insertedCoins,
         ?string $selectedProductId,
+        ?string $selectedSlotCode,
         ?array $changePlan,
         ?DateTimeImmutable $updatedAt = null,
     ) {
@@ -61,6 +65,7 @@ class ActiveSessionDocument
         $this->balanceCents = $balanceCents;
         $this->insertedCoins = $this->normalizeCoinMap($insertedCoins);
         $this->selectedProductId = $selectedProductId;
+        $this->selectedSlotCode = $selectedSlotCode;
         $this->changePlan = null === $changePlan ? null : $this->normalizeCoinMap($changePlan);
         $this->updatedAt = $updatedAt ?? new DateTimeImmutable();
     }
@@ -98,6 +103,11 @@ class ActiveSessionDocument
         return $this->selectedProductId;
     }
 
+    public function selectedSlotCode(): ?string
+    {
+        return $this->selectedSlotCode;
+    }
+
     /**
      * @return array<int, int>|null
      */
@@ -111,13 +121,18 @@ class ActiveSessionDocument
         return $this->updatedAt;
     }
 
-    public function applySession(VendingSession $session): void
+    public function applySession(VendingSession $session, ?string $selectedSlotCode = null): void
     {
         $this->sessionId = $session->id()->value();
         $this->state = $session->state()->value;
         $this->balanceCents = $session->balance()->amountInCents();
         $this->insertedCoins = $this->normalizeCoinMap($session->insertedCoins()->toArray());
         $this->selectedProductId = $session->selectedProductId()?->value();
+        if (null !== $selectedSlotCode) {
+            $this->selectedSlotCode = $selectedSlotCode;
+        } elseif (null === $session->selectedProductId()) {
+            $this->selectedSlotCode = null;
+        }
         $this->changePlan = null;
         $this->updatedAt = new DateTimeImmutable();
     }

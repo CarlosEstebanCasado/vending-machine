@@ -17,6 +17,7 @@ export type MachineSessionResponse = {
     inserted_coins: Record<string, number>
     selected_product_id: string | null
     change_plan?: Record<string, number> | null
+    selected_slot_code?: string | null
   }
 }
 
@@ -33,6 +34,10 @@ export function mapSessionResponse(response: MachineSessionResponse): MachineSes
     balanceCents: sessionPayload.balance_cents,
     insertedCoins: toNumberRecord(sessionPayload.inserted_coins),
     selectedProductId: sessionPayload.selected_product_id,
+    selectedSlotCode:
+      sessionPayload.selected_slot_code === undefined
+        ? null
+        : sessionPayload.selected_slot_code,
     changePlan:
       sessionPayload.change_plan === undefined || sessionPayload.change_plan === null
         ? null

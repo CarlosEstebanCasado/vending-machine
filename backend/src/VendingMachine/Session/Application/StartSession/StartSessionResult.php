@@ -15,6 +15,7 @@ final class StartSessionResult
         public readonly int $balanceCents,
         public readonly array $insertedCoins,
         public readonly ?string $selectedProductId,
+        public readonly ?string $selectedSlotCode,
     ) {
     }
 }

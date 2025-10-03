@@ -23,6 +23,7 @@ final class SelectProductCommandHandlerTest extends TestCase
             balanceCents: 0,
             insertedCoins: [],
             selectedProductId: null,
+            selectedSlotCode: null,
             changePlan: null,
         );
 
@@ -37,10 +38,12 @@ final class SelectProductCommandHandlerTest extends TestCase
 
         $handler = new SelectProductCommandHandler($documentManager);
 
-        $result = $handler->handle(new SelectProductCommand('machine-1', 'session-1', 'product-1'));
+        $result = $handler->handle(new SelectProductCommand('machine-1', 'session-1', 'product-1', 'A1'));
 
         self::assertSame('product-1', $document->selectedProductId());
         self::assertSame('product-1', $result->selectedProductId);
+        self::assertSame('A1', $document->selectedSlotCode());
+        self::assertSame('A1', $result->selectedSlotCode);
     }
 
     public function testItFailsWhenActiveSessionIsMissing(): void
@@ -56,7 +59,7 @@ final class SelectProductCommandHandlerTest extends TestCase
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('No active session found for this machine.');
 
-        $handler->handle(new SelectProductCommand('machine-1', 'session-1', 'product-1'));
+        $handler->handle(new SelectProductCommand('machine-1', 'session-1', 'product-1', 'A1'));
     }
 
     public function testItFailsWhenSessionIdDoesNotMatch(): void
@@ -68,6 +71,7 @@ final class SelectProductCommandHandlerTest extends TestCase
             balanceCents: 0,
             insertedCoins: [],
             selectedProductId: null,
+            selectedSlotCode: null,
             changePlan: null,
         );
 
@@ -82,6 +86,6 @@ final class SelectProductCommandHandlerTest extends TestCase
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('The provided session id does not match the active session.');
 
-        $handler->handle(new SelectProductCommand('machine-1', 'session-1', 'product-1'));
+        $handler->handle(new SelectProductCommand('machine-1', 'session-1', 'product-1', 'A1'));
     }
 }

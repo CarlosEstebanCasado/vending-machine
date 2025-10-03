@@ -50,6 +50,7 @@ final class InsertCoinCommandHandler
             balanceCents: $session->balance()->amountInCents(),
             insertedCoins: $session->insertedCoins()->toArray(),
             selectedProductId: $session->selectedProductId()?->value(),
+            selectedSlotCode: $document->selectedSlotCode(),
         );
     }
 }

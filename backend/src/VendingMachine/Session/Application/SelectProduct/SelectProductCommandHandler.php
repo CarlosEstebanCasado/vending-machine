@@ -33,7 +33,7 @@ final class SelectProductCommandHandler
         $session = $document->toVendingSession();
         $session->selectProduct(ProductId::fromString($command->productId));
 
-        $document->applySession($session);
+        $document->applySession($session, $command->slotCode);
 
         $this->documentManager->flush();
 
@@ -43,6 +43,7 @@ final class SelectProductCommandHandler
             balanceCents: $session->balance()->amountInCents(),
             insertedCoins: $session->insertedCoins()->toArray(),
             selectedProductId: $session->selectedProductId()?->value(),
+            selectedSlotCode: $document->selectedSlotCode(),
         );
     }
 }

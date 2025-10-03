@@ -23,6 +23,7 @@ final class InsertCoinCommandHandlerTest extends TestCase
             balanceCents: 0,
             insertedCoins: [],
             selectedProductId: null,
+            selectedSlotCode: null,
             changePlan: null,
         );
 
@@ -42,6 +43,8 @@ final class InsertCoinCommandHandlerTest extends TestCase
         self::assertSame(100, $result->balanceCents);
         self::assertSame([100 => 1], $result->insertedCoins);
         self::assertSame($result->insertedCoins, $document->insertedCoins());
+        self::assertNull($result->selectedSlotCode);
+        self::assertNull($document->selectedSlotCode());
     }
 
     public function testItFailsWhenActiveSessionIsMissing(): void
@@ -69,6 +72,7 @@ final class InsertCoinCommandHandlerTest extends TestCase
             balanceCents: 0,
             insertedCoins: [],
             selectedProductId: null,
+            selectedSlotCode: null,
             changePlan: null,
         );
 
@@ -95,6 +99,7 @@ final class InsertCoinCommandHandlerTest extends TestCase
             balanceCents: 0,
             insertedCoins: [],
             selectedProductId: null,
+            selectedSlotCode: null,
             changePlan: null,
         );
 

@@ -43,6 +43,7 @@ final class InsertCoinController extends AbstractController
                 'balance_cents' => $result->balanceCents,
                 'inserted_coins' => $result->insertedCoins,
                 'selected_product_id' => $result->selectedProductId,
+                'selected_slot_code' => $result->selectedSlotCode,
             ],
         ], Response::HTTP_OK);
     }

@@ -45,6 +45,8 @@ final class StartSessionCommandHandlerTest extends TestCase
         self::assertSame($result->balanceCents, $persistedDocument->balanceCents());
         self::assertSame($result->insertedCoins, $persistedDocument->insertedCoins());
         self::assertSame($result->selectedProductId, $persistedDocument->selectedProductId());
+        self::assertNull($result->selectedSlotCode);
+        self::assertNull($persistedDocument->selectedSlotCode());
     }
 
     public function testItUpdatesExistingDocument(): void
@@ -56,6 +58,7 @@ final class StartSessionCommandHandlerTest extends TestCase
             balanceCents: 0,
             insertedCoins: [],
             selectedProductId: null,
+            selectedSlotCode: null,
             changePlan: null,
         );
 
@@ -80,5 +83,7 @@ final class StartSessionCommandHandlerTest extends TestCase
         self::assertSame($result->balanceCents, $existingDocument->balanceCents());
         self::assertSame($result->insertedCoins, $existingDocument->insertedCoins());
         self::assertSame($result->selectedProductId, $existingDocument->selectedProductId());
+        self::assertNull($result->selectedSlotCode);
+        self::assertNull($existingDocument->selectedSlotCode());
     }
 }
