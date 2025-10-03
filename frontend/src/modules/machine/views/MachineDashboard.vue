@@ -222,9 +222,23 @@ export default defineComponent({
         return false
       }
 
+      const previousSlot = this.selectedSlotCode
       this.selectedSlotCode = slotCode
-      // TODO: call backend when slot selection should update the session
-      return true
+
+      const selected = this.productCards.find((item) => item.slotCode === slotCode)
+
+      if (!selected || !selected.productId || selected.status !== 'available') {
+        return true
+      }
+
+      try {
+        await this.machineStore.selectProduct(selected.productId)
+        return true
+      } catch (error) {
+        console.error('Failed to update selected product', error)
+        this.selectedSlotCode = previousSlot
+        return false
+      }
     },
     async handleConfirmCode(): Promise<void> {
       if (!this.enteredCode) {
