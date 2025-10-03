@@ -62,6 +62,7 @@ Full vending machine simulation: customer purchases and administrative managemen
 
 ## Utilities
 - Seed Mongo projections for the default machine: `make backend-seed`
+- Restart the frontend container: `make frontend-restart`
 
 ## Domain Models
 - `Product`: identity, name, price, status, slot metadata, inventory counts; emits restock/out-of-stock events.

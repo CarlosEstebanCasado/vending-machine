@@ -32,6 +32,7 @@
         :error="error"
         :loading="loading"
         @keypad="handleKeypadPress"
+        @insert-coin="handleInsertCoin"
       />
     </div>
   </main>
@@ -179,55 +180,112 @@ export default defineComponent({
         minimumFractionDigits: 2,
       }).format(cents / 100)
     },
-    selectSlot(slotCode: string): void {
-      this.selectedSlotCode = slotCode
-      this.enteredCode = ''
+    async selectSlot(slotCode: string): Promise<void> {
+      if (await this.trySelectSlot(slotCode)) {
+        this.resetEnteredCode()
+      }
     },
-    handleKeypadPress(value: string): void {
-      if (value === '' || this.loading) {
+    async handleKeypadPress(value: string): Promise<void> {
+      if (!this.canProcessKeypad(value)) {
         return
       }
 
       if (value === 'CLR') {
-        this.enteredCode = ''
-        this.selectedSlotCode = ''
+        this.resetSelection()
         return
       }
 
       if (value === 'OK') {
-        if (this.enteredCode) {
-          const match = this.productCards.find((item) => item.slotCode === this.enteredCode)
-          if (match) {
-            this.selectedSlotCode = match.slotCode
-          }
-        }
-        this.enteredCode = ''
+        await this.handleConfirmCode()
         return
       }
 
-      const candidate = `${this.enteredCode}${value}`.slice(0, 3)
-      this.enteredCode = candidate
+      await this.handleNumericKey(value)
+    },
+    async handleInsertCoin(coinValue: number): Promise<void> {
+      void coinValue
+      await this.ensureSessionReady()
+      // TODO: integrate insert coin command once available
+    },
+    async ensureSessionReady(): Promise<boolean> {
+      try {
+        await this.machineStore.ensureSession()
+        return true
+      } catch (error) {
+        console.error('Failed to start session', error)
+        return false
+      }
+    },
+    async trySelectSlot(slotCode: string): Promise<boolean> {
+      const ready = await this.ensureSessionReady()
+      if (!ready) {
+        return false
+      }
 
-      const exact = this.productCards.find((item) => item.slotCode === candidate)
+      this.selectedSlotCode = slotCode
+      // TODO: call backend when slot selection should update the session
+      return true
+    },
+    async handleConfirmCode(): Promise<void> {
+      if (!this.enteredCode) {
+        this.resetEnteredCode()
+        return
+      }
+
+      const match = this.findSlotByCode(this.enteredCode)
+      this.resetEnteredCode()
+
+      if (!match) {
+        return
+      }
+
+      await this.trySelectSlot(match.slotCode)
+    },
+    async handleNumericKey(value: string): Promise<void> {
+      const candidate = this.appendToCode(value)
+
+      const exact = this.findSlotByCode(candidate)
       if (exact) {
-        this.selectedSlotCode = exact.slotCode
-        this.enteredCode = ''
+        this.resetEnteredCode()
+        await this.trySelectSlot(exact.slotCode)
         return
       }
 
-      const hasPartialMatch = this.productCards.some((item) => item.slotCode.startsWith(candidate))
-      if (hasPartialMatch) {
+      if (this.hasPartialMatch(candidate)) {
         this.selectedSlotCode = ''
         return
       }
 
-      const fallback = this.productCards.find((item) => item.slotCode === value)
+      const fallback = this.findSlotByCode(value)
+      this.resetEnteredCode()
+
       if (fallback) {
-        this.selectedSlotCode = fallback.slotCode
-      } else {
-        this.selectedSlotCode = candidate
+        await this.trySelectSlot(fallback.slotCode)
+        return
       }
+
+      this.selectedSlotCode = candidate
+    },
+    findSlotByCode(code: string): MachineCatalogItem | undefined {
+      return this.productCards.find((item) => item.slotCode === code)
+    },
+    hasPartialMatch(prefix: string): boolean {
+      return this.productCards.some((item) => item.slotCode.startsWith(prefix))
+    },
+    appendToCode(value: string): string {
+      const maxCodeLength = 3
+      this.enteredCode = `${this.enteredCode}${value}`.slice(0, maxCodeLength)
+      return this.enteredCode
+    },
+    resetSelection(): void {
+      this.resetEnteredCode()
+      this.selectedSlotCode = ''
+    },
+    resetEnteredCode(): void {
       this.enteredCode = ''
+    },
+    canProcessKeypad(value: string): boolean {
+      return value !== '' && !this.loading
     },
   },
 })

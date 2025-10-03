@@ -31,3 +31,11 @@ export function getJson<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
 }
+
+export function postJson<T, B = unknown>(path: string, body?: B, init?: RequestInit): Promise<T> {
+  return request<T>(path, {
+    method: 'POST',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    ...init,
+  });
+}

@@ -49,6 +49,27 @@
       </div>
     </div>
 
+    <div class="coin-controls">
+      <CoinButton
+        v-for="coin in coins"
+        :key="coin.value"
+        :label="coin.label"
+        :value="coin.value"
+        :disabled="loading"
+        @insert="handleCoinButton"
+      />
+    </div>
+
+    <div class="coin-animations">
+      <CoinInsertAnimation
+        v-for="animation in coinAnimations"
+        :key="animation.id"
+        :label="animation.label"
+        :animation-id="animation.id"
+        @finished="removeCoinAnimation"
+      />
+    </div>
+
     <div class="coin-insert"></div>
 
     <div class="actions">
@@ -68,9 +89,29 @@
 <script lang="ts">
 import { defineComponent, type PropType } from 'vue'
 import type { MachineAlerts } from '@/modules/machine/api/getMachineState'
+import CoinButton from '@/modules/machine/components/CoinButton.vue'
+import CoinInsertAnimation from '@/modules/machine/components/CoinInsertAnimation.vue'
+
+type CoinDefinition = {
+  label: string
+  value: number
+}
+
+type CoinAnimation = CoinDefinition & { id: number }
+
+const AVAILABLE_COINS: CoinDefinition[] = [
+  { label: '€1.00', value: 100 },
+  { label: '€0.25', value: 25 },
+  { label: '€0.10', value: 10 },
+  { label: '€0.05', value: 5 },
+]
 
 export default defineComponent({
   name: 'MachineControlPanel',
+  components: {
+    CoinButton,
+    CoinInsertAnimation,
+  },
   props: {
     selectedSlotCode: {
       type: String,
@@ -121,7 +162,42 @@ export default defineComponent({
       default: false,
     },
   },
-  emits: ['keypad'],
+  emits: ['keypad', 'insert-coin'],
+  data() {
+    return {
+      coins: AVAILABLE_COINS,
+      coinAnimations: [] as CoinAnimation[],
+    }
+  },
+  methods: {
+    handleCoinButton(value: number): void {
+      if (this.loading) {
+        return
+      }
+
+      const coin = this.findCoinByValue(value)
+      if (!coin) {
+        return
+      }
+
+      this.startCoinAnimation(coin)
+      this.$emit('insert-coin', coin.value)
+    },
+    removeCoinAnimation(id: number): void {
+      this.coinAnimations = this.coinAnimations.filter((animation) => animation.id !== id)
+    },
+    findCoinByValue(value: number): CoinDefinition | undefined {
+      return this.coins.find((item) => item.value === value)
+    },
+    startCoinAnimation(coin: CoinDefinition): void {
+      const animation: CoinAnimation = {
+        ...coin,
+        id: Date.now() + Math.floor(Math.random() * 1000),
+      }
+
+      this.coinAnimations.push(animation)
+    },
+  },
 })
 </script>
 
@@ -135,6 +211,7 @@ export default defineComponent({
   padding: 1.75rem;
   color: white;
   box-shadow: 0 18px 35px rgba(15, 23, 42, 0.45);
+  position: relative;
 }
 
 .product-display {
@@ -296,6 +373,14 @@ export default defineComponent({
   box-shadow: none;
 }
 
+
+.coin-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
 .coin-insert {
   height: 100px;
   border-radius: 18px;
@@ -344,6 +429,12 @@ export default defineComponent({
   border-radius: 18px;
   background: linear-gradient(180deg, #111827 0%, #050a13 100%);
   box-shadow: inset 0 18px 32px rgba(0, 0, 0, 0.45);
+}
+
+.coin-animations {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 .inline-alert {

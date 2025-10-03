@@ -6,6 +6,7 @@ namespace App\VendingMachine\Machine\Infrastructure\Command;
 
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinDenomination;
 use App\VendingMachine\Inventory\Domain\ValueObject\SlotStatus;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
 use App\VendingMachine\Product\Domain\ValueObject\ProductId;
@@ -60,6 +61,12 @@ final class SeedMachineStateCommand extends Command
         $this->documentManager->createQueryBuilder(CoinInventoryProjectionDocument::class)
             ->remove()
             ->field('machineId')->equals($this->machineId)
+            ->getQuery()
+            ->execute();
+
+        $this->documentManager->createQueryBuilder(ActiveSessionDocument::class)
+            ->remove()
+            ->field('_id')->equals($this->machineId)
             ->getQuery()
             ->execute();
     }
@@ -138,6 +145,42 @@ final class SeedMachineStateCommand extends Command
                 productId: $this->productId('juice'),
                 productName: 'Orange Juice',
                 priceCents: 100,
+            ),
+            new SlotProjectionDocument(
+                machineId: $this->machineId,
+                slotCode: '17',
+                capacity: 8,
+                recommendedSlotQuantity: 6,
+                quantity: 0,
+                status: SlotStatus::Available->value,
+                lowStock: true,
+                productId: null,
+                productName: null,
+                priceCents: null,
+            ),
+            new SlotProjectionDocument(
+                machineId: $this->machineId,
+                slotCode: '18',
+                capacity: 10,
+                recommendedSlotQuantity: 8,
+                quantity: 5,
+                status: SlotStatus::Available->value,
+                lowStock: false,
+                productId: $this->productId('water'),
+                productName: 'Water',
+                priceCents: 65,
+            ),
+            new SlotProjectionDocument(
+                machineId: $this->machineId,
+                slotCode: '19',
+                capacity: 12,
+                recommendedSlotQuantity: 10,
+                quantity: 3,
+                status: SlotStatus::Available->value,
+                lowStock: true,
+                productId: $this->productId('soda'),
+                productName: 'Soda',
+                priceCents: 150,
             ),
         ];
 

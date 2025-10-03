@@ -7,11 +7,13 @@ import type {
   MachineState,
 } from '@/modules/machine/api/getMachineState'
 import { getMachineState } from '@/modules/machine/api/getMachineState'
+import { startMachineSession } from '@/modules/machine/api/startMachineSession'
 
 interface MachineStoreState {
   machineState: MachineState | null
   loading: boolean
   error: string | null
+  sessionPromise: Promise<MachineSession> | null
 }
 
 export const useMachineStore = defineStore('machine', {
@@ -19,6 +21,7 @@ export const useMachineStore = defineStore('machine', {
     machineState: null,
     loading: false,
     error: null,
+    sessionPromise: null,
   }),
   getters: {
     catalog(): MachineCatalogItem[] {
@@ -55,6 +58,56 @@ export const useMachineStore = defineStore('machine', {
       } finally {
         this.loading = false
       }
+    },
+    async ensureSession(): Promise<MachineSession> {
+      if (this.machineState?.session) {
+        return this.machineState.session
+      }
+
+      if (this.sessionPromise) {
+        return this.sessionPromise
+      }
+
+      this.error = null
+
+      const promise = startMachineSession()
+        .then((result) => {
+          const session = result.session
+
+          if (this.machineState) {
+            this.machineState = {
+              ...this.machineState,
+              machineId: result.machineId,
+              session,
+            }
+          } else {
+            this.machineState = {
+              machineId: result.machineId,
+              timestamp: new Date().toISOString(),
+              session,
+              catalog: [],
+              coins: { available: {}, reserved: {} },
+              alerts: { insufficientChange: false, outOfStock: [] },
+            }
+          }
+
+          return session
+        })
+        .catch((error) => {
+          if (error instanceof Error) {
+            this.error = error.message
+          } else {
+            this.error = 'Unexpected error starting session'
+          }
+
+          throw error
+        })
+        .finally(() => {
+          this.sessionPromise = null
+        })
+
+      this.sessionPromise = promise
+      return promise
     },
   },
 })
