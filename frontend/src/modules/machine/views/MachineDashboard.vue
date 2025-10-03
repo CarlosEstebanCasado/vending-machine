@@ -31,9 +31,14 @@
         :keypad-buttons="keypadButtons"
         :alerts="alerts"
         :error="panelError"
+        :info="panelInfo"
         :loading="loading"
+        :return-disabled="returnButtonDisabled"
+        :dispensed-coins="dispensedCoins"
         @keypad="handleKeypadPress"
         @insert-coin="handleInsertCoin"
+        @return-coins="handleReturnCoins"
+        @collect-coin="collectReturnedCoin"
       />
     </div>
   </main>
@@ -52,7 +57,7 @@ import type {
 import { useMachineStore } from '@/modules/machine/store/useMachineStore'
 import MachineHeader from '@/modules/machine/components/MachineHeader.vue'
 import MachineProductGrid from '@/modules/machine/components/MachineProductGrid.vue'
-import MachineControlPanel from '@/modules/machine/components/MachineControlPanel.vue'
+import MachineControlPanel, { type DispensedCoin } from '@/modules/machine/components/MachineControlPanel.vue'
 
 export default defineComponent({
   name: 'MachineDashboard',
@@ -69,6 +74,12 @@ export default defineComponent({
       selectionTimeoutId: null as number | null,
       panelError: null as string | null,
       errorTimeoutId: null as number | null,
+      panelInfo: null as string | null,
+      infoTimeoutId: null as number | null,
+      returnInProgress: false,
+      returnCountdownId: null as number | null,
+      coinDispenseTimeoutId: null as number | null,
+      dispensedCoins: [] as DispensedCoin[],
     }
   },
   watch: {
@@ -90,6 +101,7 @@ export default defineComponent({
         this.clearErrorTimeout()
 
         if (newError) {
+          this.setInfo(null)
           this.panelError = newError
           this.errorTimeoutId = window.setTimeout(() => {
             this.panelError = null
@@ -105,6 +117,9 @@ export default defineComponent({
   beforeUnmount() {
     this.clearSelectionTimeout()
     this.clearErrorTimeout()
+    this.clearInfoTimeout()
+    this.clearReturnCountdown()
+    this.clearCoinDispenseTimeout()
   },
   computed: {
     ...mapStores(useMachineStore),
@@ -234,6 +249,23 @@ export default defineComponent({
         ['CLR', '0', 'OK'],
       ]
     },
+    canReturnCoins(): boolean {
+      if (this.dispensedCoins.length > 0) {
+        return true
+      }
+
+      if (!this.session) {
+        return false
+      }
+
+      const hasBalance = (this.session.balanceCents ?? 0) > 0
+      const hasInsertedCoins = Object.values(this.session.insertedCoins ?? {}).some((quantity) => quantity > 0)
+
+      return hasBalance || hasInsertedCoins
+    },
+    returnButtonDisabled(): boolean {
+      return this.loading || this.returnInProgress || !this.canReturnCoins
+    },
   },
   created() {
     this.machineStore.fetchMachineState()
@@ -281,6 +313,103 @@ export default defineComponent({
         await this.machineStore.insertCoin(coinValue)
       } catch (error) {
         console.error('Failed to insert coin', error)
+      }
+    },
+    async handleReturnCoins(): Promise<void> {
+      if (this.returnInProgress) {
+        return
+      }
+
+      const hasDispensedCoins = this.dispensedCoins.length > 0
+
+      if (hasDispensedCoins) {
+        this.setInfo('Please collect your coins')
+        return
+      }
+
+      if (!this.canReturnCoins) {
+        return
+      }
+
+      const ready = await this.ensureSessionReady()
+      if (!ready) {
+        return
+      }
+
+      this.returnInProgress = true
+      this.setInfo('Returning coins...')
+      this.clearReturnCountdown()
+
+      this.returnCountdownId = window.setTimeout(() => {
+        void this.executeReturnCoins()
+      }, 5000)
+    },
+    async executeReturnCoins(): Promise<void> {
+      this.clearReturnCountdown()
+
+      try {
+        const result = await this.machineStore.returnCoins()
+        this.enqueueReturnedCoins(result.returnedCoins)
+        this.selectedSlotCode = ''
+        this.lastConfirmedSlotCode = ''
+
+        const totalReturned = Object.values(result.returnedCoins).reduce((sum, quantity) => sum + quantity, 0)
+        if (totalReturned > 0) {
+          this.setInfo('Please collect your coins')
+        } else {
+          this.setInfo('No coins to return', 3000)
+        }
+      } catch (error) {
+        console.error('Failed to return coins', error)
+        this.setInfo(null)
+      } finally {
+        this.returnInProgress = false
+      }
+    },
+    enqueueReturnedCoins(returnedCoins: Record<number, number>): void {
+      const queue: DispensedCoin[] = []
+
+      const denominations = Object.keys(returnedCoins)
+        .map((value) => Number(value))
+        .filter((value) => returnedCoins[value] > 0)
+        .sort((a, b) => b - a)
+
+      denominations.forEach((value) => {
+        const quantity = returnedCoins[value]
+        for (let index = 0; index < quantity; index += 1) {
+          queue.push({
+            id: Date.now() + Math.floor(Math.random() * 1000) + index,
+            value,
+            label: this.coinLabel(value),
+          })
+        }
+      })
+
+      if (queue.length === 0) {
+        this.dispensedCoins = []
+        return
+      }
+
+      this.clearCoinDispenseTimeout()
+
+      const dispenseNext = () => {
+        const next = queue.shift()
+        if (!next) {
+          this.coinDispenseTimeoutId = null
+          return
+        }
+
+        this.dispensedCoins.push(next)
+        this.coinDispenseTimeoutId = window.setTimeout(dispenseNext, 400)
+      }
+
+      dispenseNext()
+    },
+    collectReturnedCoin(id: number): void {
+      this.dispensedCoins = this.dispensedCoins.filter((coin) => coin.id !== id)
+
+      if (this.dispensedCoins.length === 0 && !this.returnInProgress) {
+        this.setInfo(null)
       }
     },
     async ensureSessionReady(): Promise<boolean> {
@@ -375,6 +504,12 @@ export default defineComponent({
     async handleClearSelection(): Promise<void> {
       this.resetEnteredCode()
 
+      this.clearReturnCountdown()
+      this.clearCoinDispenseTimeout()
+      this.dispensedCoins = []
+      this.returnInProgress = false
+      this.setInfo(null)
+
       const hadSelection = Boolean(this.lastConfirmedSlotCode || this.selectedSlotCode)
 
       if (hadSelection) {
@@ -412,6 +547,42 @@ export default defineComponent({
         window.clearTimeout(this.errorTimeoutId)
         this.errorTimeoutId = null
       }
+    },
+    clearInfoTimeout(): void {
+      if (this.infoTimeoutId !== null) {
+        window.clearTimeout(this.infoTimeoutId)
+        this.infoTimeoutId = null
+      }
+    },
+    clearReturnCountdown(): void {
+      if (this.returnCountdownId !== null) {
+        window.clearTimeout(this.returnCountdownId)
+        this.returnCountdownId = null
+      }
+    },
+    clearCoinDispenseTimeout(): void {
+      if (this.coinDispenseTimeoutId !== null) {
+        window.clearTimeout(this.coinDispenseTimeoutId)
+        this.coinDispenseTimeoutId = null
+      }
+    },
+    setInfo(message: string | null, duration = 0): void {
+      this.clearInfoTimeout()
+      this.panelInfo = message
+
+      if (message && duration > 0) {
+        this.infoTimeoutId = window.setTimeout(() => {
+          this.panelInfo = null
+          this.infoTimeoutId = null
+        }, duration)
+      }
+    },
+    coinLabel(value: number): string {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2,
+      }).format(value / 100)
     },
     scheduleSelectionRevert(targetSlotCode: string): void {
       this.clearSelectionTimeout()

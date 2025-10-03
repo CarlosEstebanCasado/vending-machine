@@ -4,6 +4,7 @@ import { useMachineStore } from '@/modules/machine/store/useMachineStore'
 import type { MachineState } from '@/modules/machine/api/getMachineState'
 import * as machineApi from '@/modules/machine/api/getMachineState'
 import * as insertCoinApi from '@/modules/machine/api/insertMachineCoin'
+import * as returnCoinsApi from '@/modules/machine/api/returnMachineCoins'
 import * as startSessionApi from '@/modules/machine/api/startMachineSession'
 
 const mockMachineState = (): MachineState => ({
@@ -108,5 +109,38 @@ describe('useMachineStore', () => {
     store.clearError()
 
     expect(store.error).toBeNull()
+  })
+
+  it('returns coins and updates session state', async () => {
+    const state = mockMachineState()
+    state.session = {
+      ...state.session!,
+      balanceCents: 125,
+      insertedCoins: { 100: 1, 25: 1 },
+    }
+
+    const returnResult = {
+      machineId: 'vm-001',
+      session: {
+        ...state.session,
+        balanceCents: 0,
+        insertedCoins: {},
+        selectedProductId: null,
+        selectedSlotCode: null,
+      },
+      returnedCoins: { 100: 1, 25: 1 },
+    }
+
+    vi.spyOn(returnCoinsApi, 'returnMachineCoins').mockResolvedValue(returnResult)
+
+    const store = useMachineStore()
+    store.machineState = state
+
+    const response = await store.returnCoins()
+
+    expect(returnCoinsApi.returnMachineCoins).toHaveBeenCalledWith(state.session!.id)
+    expect(store.machineState?.session?.balanceCents).toBe(0)
+    expect(store.machineState?.session?.insertedCoins).toEqual({})
+    expect(response.returnedCoins).toEqual({ 100: 1, 25: 1 })
   })
 })

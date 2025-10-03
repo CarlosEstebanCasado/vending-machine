@@ -20,7 +20,7 @@
         </div>
       </dl>
 
-      <div v-if="selectionState === 'idle'" class="product-display__marquee">
+      <div v-if="selectionState === 'idle' && !statusMessage" class="product-display__marquee">
         <div class="marquee-track">
           <span>Select a product to start the sale · </span>
           <span>Select a product to start the sale · </span>
@@ -31,6 +31,11 @@
       <div v-else-if="selectionState === 'unavailable'" class="product-display__warning">
         <span class="warning-icon">!</span>
         <p>Product unavailable</p>
+      </div>
+
+      <div v-else-if="statusMessage" :class="overlayClasses">
+        <span v-if="statusTone !== 'info'" class="overlay-icon">!</span>
+        <p>{{ statusMessage }}</p>
       </div>
     </div>
 
@@ -74,15 +79,27 @@
 
     <div class="actions">
       <button class="action primary" type="button" disabled>Buy product</button>
-      <button class="action secondary" type="button" disabled>Return coin</button>
+      <button
+        class="action secondary"
+        type="button"
+        :disabled="returnDisabled"
+        @click="$emit('return-coins')"
+      >
+        Return coins
+      </button>
     </div>
 
-    <div class="coin-slot"></div>
+    <div class="coin-slot">
+      <CoinButton
+        v-for="coin in dispensedCoins"
+        :key="coin.id"
+        :label="coin.label"
+        :value="coin.id"
+        :disabled="false"
+        @insert="$emit('collect-coin', coin.id)"
+      />
+    </div>
 
-    <p v-if="error" class="inline-alert error">{{ error }}</p>
-    <p v-else-if="alerts.outOfStock.length" class="inline-alert warning">
-      Out of stock: {{ alerts.outOfStock.join(', ') }}
-    </p>
   </aside>
 </template>
 
@@ -98,6 +115,12 @@ type CoinDefinition = {
 }
 
 type CoinAnimation = CoinDefinition & { id: number }
+
+export type DispensedCoin = {
+  id: number
+  label: string
+  value: number
+}
 
 const AVAILABLE_COINS: CoinDefinition[] = [
   { label: '€1.00', value: 100 },
@@ -161,12 +184,24 @@ export default defineComponent({
       type: String as PropType<string | null>,
       default: null,
     },
+    info: {
+      type: String as PropType<string | null>,
+      default: null,
+    },
     loading: {
       type: Boolean,
       default: false,
     },
+    returnDisabled: {
+      type: Boolean,
+      default: false,
+    },
+    dispensedCoins: {
+      type: Array as PropType<DispensedCoin[]>,
+      default: () => [],
+    },
   },
-  emits: ['keypad', 'insert-coin'],
+  emits: ['keypad', 'insert-coin', 'return-coins', 'collect-coin'],
   data() {
     return {
       coins: AVAILABLE_COINS,
@@ -179,6 +214,44 @@ export default defineComponent({
         'product-display__status-value': true,
         'product-display__status-value--warning': this.requirementTone === 'warning',
         'product-display__status-value--positive': this.requirementTone === 'positive',
+      }
+    },
+    statusMessage(): string | null {
+      if (this.error) {
+        return this.error
+      }
+
+      if (this.info) {
+        return this.info
+      }
+
+      if (this.alerts.outOfStock.length) {
+        return `Out of stock: ${this.alerts.outOfStock.join(', ')}`
+      }
+
+      return null
+    },
+    statusTone(): 'error' | 'info' | 'warning' | null {
+      if (this.error) {
+        return 'error'
+      }
+
+      if (this.info) {
+        return 'info'
+      }
+
+      if (this.alerts.outOfStock.length) {
+        return 'warning'
+      }
+
+      return null
+    },
+    overlayClasses(): Record<string, boolean> {
+      return {
+        'product-display__overlay': true,
+        'product-display__overlay--error': this.statusTone === 'error',
+        'product-display__overlay--info': this.statusTone === 'info',
+        'product-display__overlay--warning': this.statusTone === 'warning',
       }
     },
   },
@@ -289,6 +362,35 @@ export default defineComponent({
   color: #4ade80;
 }
 
+.product-display__message {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+}
+
+.product-display__message--error {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+.product-display__message--info {
+  background: rgba(129, 140, 248, 0.18);
+  border-color: rgba(129, 140, 248, 0.4);
+  color: #cdd5ff;
+}
+
+.product-display__message--warning {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde68a;
+}
+
 .product-display__marquee {
   position: absolute;
   inset: 0;
@@ -333,6 +435,60 @@ export default defineComponent({
   justify-content: center;
   font-size: 1.4rem;
   box-shadow: 0 8px 18px rgba(249, 115, 22, 0.35);
+}
+
+.product-display__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  border-radius: 16px;
+  padding: 1.25rem;
+  text-align: center;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.4);
+  pointer-events: none;
+  background: rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+}
+
+.product-display__overlay--error {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+.product-display__overlay--info {
+  background: rgba(129, 140, 248, 0.18);
+  border-color: rgba(129, 140, 248, 0.4);
+  color: #cdd5ff;
+}
+
+.product-display__overlay--warning {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde68a;
+}
+
+.product-display__overlay p {
+  margin: 0;
+}
+
+.overlay-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 8px 18px rgba(251, 191, 36, 0.35);
 }
 
 .marquee-track {
@@ -432,7 +588,7 @@ export default defineComponent({
   padding: 0.75rem 1.25rem;
   font-weight: 600;
   font-size: 1rem;
-  cursor: not-allowed;
+  cursor: pointer;
 }
 
 .action.primary {
@@ -445,11 +601,21 @@ export default defineComponent({
   color: #cbd5f5;
 }
 
+.action[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .coin-slot {
-  height: 160px;
+  min-height: 160px;
   border-radius: 18px;
   background: linear-gradient(180deg, #111827 0%, #050a13 100%);
   box-shadow: inset 0 18px 32px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
 }
 
 .coin-animations {
@@ -474,6 +640,12 @@ export default defineComponent({
 .inline-alert.warning {
   background: rgba(251, 191, 36, 0.15);
   color: #fde68a;
+}
+
+.inline-alert.info {
+  background: rgba(129, 140, 248, 0.15);
+  border-color: rgba(129, 140, 248, 0.35);
+  color: #cdd5ff;
 }
 
 @media (max-width: 1024px) {
