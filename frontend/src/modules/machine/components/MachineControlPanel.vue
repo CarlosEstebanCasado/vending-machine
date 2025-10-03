@@ -15,8 +15,8 @@
           <dd>{{ balanceDisplay }}</dd>
         </div>
         <div>
-          <dt>Required</dt>
-          <dd :class="{ negative: showNegative }">{{ requiredDisplay }}</dd>
+          <dt>{{ requirementLabel }}</dt>
+          <dd :class="requirementClasses">{{ requiredDisplay }}</dd>
         </div>
       </dl>
 
@@ -137,9 +137,13 @@ export default defineComponent({
       type: String,
       required: true,
     },
-    showNegative: {
-      type: Boolean,
-      default: false,
+    requirementLabel: {
+      type: String,
+      default: 'Required',
+    },
+    requirementTone: {
+      type: String as () => 'neutral' | 'warning' | 'positive',
+      default: 'neutral',
     },
     selectionState: {
       type: String as () => 'idle' | 'ready' | 'unavailable',
@@ -168,6 +172,15 @@ export default defineComponent({
       coins: AVAILABLE_COINS,
       coinAnimations: [] as CoinAnimation[],
     }
+  },
+  computed: {
+    requirementClasses(): Record<string, boolean> {
+      return {
+        'product-display__status-value': true,
+        'product-display__status-value--warning': this.requirementTone === 'warning',
+        'product-display__status-value--positive': this.requirementTone === 'positive',
+      }
+    },
   },
   methods: {
     handleCoinButton(value: number): void {
@@ -264,8 +277,16 @@ export default defineComponent({
   color: #f8fafc;
 }
 
-.product-display__status dd.negative {
+.product-display__status-value {
+  color: #f8fafc;
+}
+
+.product-display__status-value--warning {
   color: #f87171;
+}
+
+.product-display__status-value--positive {
+  color: #4ade80;
 }
 
 .product-display__marquee {

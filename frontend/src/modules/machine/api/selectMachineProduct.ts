@@ -24,10 +24,10 @@ export async function selectMachineProduct({
   sessionId,
   productId,
 }: SelectMachineProductRequest): Promise<MachineSessionResult> {
-  const response = await postJson<MachineSessionResponse>('/machine/session/product', toPayload({
-    sessionId,
-    productId,
-  }))
+  const response = await postJson<MachineSessionResponse>(
+    '/machine/session/product',
+    toPayload({ sessionId, productId})
+  )
 
   return mapSessionResponse(response)
 }

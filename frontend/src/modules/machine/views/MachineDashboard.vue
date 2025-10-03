@@ -25,7 +25,8 @@
         :display-price="displayPriceText"
         :balance-display="balanceDisplay"
         :required-display="requiredDisplay"
-        :show-negative="showNegative"
+        :requirement-label="requirementLabel"
+        :requirement-tone="requirementTone"
         :selection-state="selectionState"
         :keypad-buttons="keypadButtons"
         :alerts="alerts"
@@ -157,10 +158,39 @@ export default defineComponent({
         return '—'
       }
 
-      return this.centsToCurrency(this.requiredAmount)
+      const difference = this.differenceAmount
+      const amount = Math.abs(difference)
+
+      return this.centsToCurrency(amount)
     },
-    showNegative(): boolean {
-      return this.selectionState === 'ready' && this.balanceAmount < this.requiredAmount
+    requirementLabel(): string {
+      if (this.selectionState !== 'ready') {
+        return 'Required'
+      }
+
+      return this.differenceAmount > 0 ? 'Required' : 'Change'
+    },
+    requirementTone(): 'neutral' | 'warning' | 'positive' {
+      if (this.selectionState !== 'ready') {
+        return 'neutral'
+      }
+
+      if (this.differenceAmount > 0) {
+        return 'warning'
+      }
+
+      if (this.differenceAmount < 0) {
+        return 'positive'
+      }
+
+      return 'neutral'
+    },
+    differenceAmount(): number {
+      if (this.selectionState !== 'ready') {
+        return 0
+      }
+
+      return this.requiredAmount - this.balanceAmount
     },
     keypadButtons(): string[][] {
       return [
@@ -208,9 +238,16 @@ export default defineComponent({
       await this.handleNumericKey(value)
     },
     async handleInsertCoin(coinValue: number): Promise<void> {
-      void coinValue
-      await this.ensureSessionReady()
-      // TODO: integrate insert coin command once available
+      const ready = await this.ensureSessionReady()
+      if (!ready) {
+        return
+      }
+
+      try {
+        await this.machineStore.insertCoin(coinValue)
+      } catch (error) {
+        console.error('Failed to insert coin', error)
+      }
     },
     async ensureSessionReady(): Promise<boolean> {
       try {
