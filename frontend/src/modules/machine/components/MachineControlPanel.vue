@@ -20,7 +20,19 @@
         </div>
       </dl>
 
-      <div v-if="selectionState === 'idle'" class="product-display__marquee">
+      <div
+        v-if="statusMessage"
+        class="product-display__message"
+        :class="{
+          'product-display__message--error': statusTone === 'error',
+          'product-display__message--info': statusTone === 'info',
+          'product-display__message--warning': statusTone === 'warning',
+        }"
+      >
+        {{ statusMessage }}
+      </div>
+
+      <div v-if="selectionState === 'idle' && !statusMessage" class="product-display__marquee">
         <div class="marquee-track">
           <span>Select a product to start the sale · </span>
           <span>Select a product to start the sale · </span>
@@ -85,22 +97,16 @@
     </div>
 
     <div class="coin-slot">
-      <button
+      <CoinButton
         v-for="coin in dispensedCoins"
         :key="coin.id"
-        class="coin-slot__coin"
-        type="button"
-        @click="$emit('collect-coin', coin.id)"
-      >
-        {{ coin.label }}
-      </button>
+        :label="coin.label"
+        :value="coin.id"
+        :disabled="false"
+        @insert="$emit('collect-coin', coin.id)"
+      />
     </div>
 
-    <p v-if="error" class="inline-alert error">{{ error }}</p>
-    <p v-else-if="info" class="inline-alert info">{{ info }}</p>
-    <p v-else-if="alerts.outOfStock.length" class="inline-alert warning">
-      Out of stock: {{ alerts.outOfStock.join(', ') }}
-    </p>
   </aside>
 </template>
 
@@ -217,6 +223,36 @@ export default defineComponent({
         'product-display__status-value--positive': this.requirementTone === 'positive',
       }
     },
+    statusMessage(): string | null {
+      if (this.error) {
+        return this.error
+      }
+
+      if (this.info) {
+        return this.info
+      }
+
+      if (this.alerts.outOfStock.length) {
+        return `Out of stock: ${this.alerts.outOfStock.join(', ')}`
+      }
+
+      return null
+    },
+    statusTone(): 'error' | 'info' | 'warning' | null {
+      if (this.error) {
+        return 'error'
+      }
+
+      if (this.info) {
+        return 'info'
+      }
+
+      if (this.alerts.outOfStock.length) {
+        return 'warning'
+      }
+
+      return null
+    },
   },
   methods: {
     handleCoinButton(value: number): void {
@@ -323,6 +359,35 @@ export default defineComponent({
 
 .product-display__status-value--positive {
   color: #4ade80;
+}
+
+.product-display__message {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+}
+
+.product-display__message--error {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+.product-display__message--info {
+  background: rgba(129, 140, 248, 0.18);
+  border-color: rgba(129, 140, 248, 0.4);
+  color: #cdd5ff;
+}
+
+.product-display__message--warning {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde68a;
 }
 
 .product-display__marquee {
@@ -496,23 +561,6 @@ export default defineComponent({
   gap: 0.75rem;
   align-items: center;
   padding: 1rem;
-}
-
-.coin-slot__coin {
-  background: linear-gradient(160deg, #fbbf24 0%, #f97316 100%);
-  border: none;
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  color: #0f172a;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.35);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.coin-slot__coin:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 20px rgba(249, 115, 22, 0.45);
 }
 
 .coin-animations {

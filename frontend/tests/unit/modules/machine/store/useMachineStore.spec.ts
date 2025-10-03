@@ -115,8 +115,8 @@ describe('useMachineStore', () => {
     const state = mockMachineState()
     state.session = {
       ...state.session!,
-      balanceCents: 150,
-      insertedCoins: { 100: 1, 50: 1 },
+      balanceCents: 125,
+      insertedCoins: { 100: 1, 25: 1 },
     }
 
     const returnResult = {
@@ -128,7 +128,7 @@ describe('useMachineStore', () => {
         selectedProductId: null,
         selectedSlotCode: null,
       },
-      returnedCoins: { 100: 1, 50: 1 },
+      returnedCoins: { 100: 1, 25: 1 },
     }
 
     vi.spyOn(returnCoinsApi, 'returnMachineCoins').mockResolvedValue(returnResult)
@@ -141,6 +141,6 @@ describe('useMachineStore', () => {
     expect(returnCoinsApi.returnMachineCoins).toHaveBeenCalledWith(state.session!.id)
     expect(store.machineState?.session?.balanceCents).toBe(0)
     expect(store.machineState?.session?.insertedCoins).toEqual({})
-    expect(response.returnedCoins).toEqual({ 100: 1, 50: 1 })
+    expect(response.returnedCoins).toEqual({ 100: 1, 25: 1 })
   })
 })

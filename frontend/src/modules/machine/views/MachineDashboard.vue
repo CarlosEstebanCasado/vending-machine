@@ -323,7 +323,7 @@ export default defineComponent({
       const hasDispensedCoins = this.dispensedCoins.length > 0
 
       if (hasDispensedCoins) {
-        this.setInfo('Please collect your coins', 3000)
+        this.setInfo('Please collect your coins')
         return
       }
 
@@ -578,14 +578,11 @@ export default defineComponent({
       }
     },
     coinLabel(value: number): string {
-      const map: Record<number, string> = {
-        100: '€1.00',
-        25: '€0.25',
-        10: '€0.10',
-        5: '€0.05',
-      }
-
-      return map[value] ?? `${(value / 100).toFixed(2)} €`
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: 'EUR',
+        minimumFractionDigits: 2,
+      }).format(value / 100)
     },
     scheduleSelectionRevert(targetSlotCode: string): void {
       this.clearSelectionTimeout()
