@@ -20,18 +20,6 @@
         </div>
       </dl>
 
-      <div
-        v-if="statusMessage"
-        class="product-display__message"
-        :class="{
-          'product-display__message--error': statusTone === 'error',
-          'product-display__message--info': statusTone === 'info',
-          'product-display__message--warning': statusTone === 'warning',
-        }"
-      >
-        {{ statusMessage }}
-      </div>
-
       <div v-if="selectionState === 'idle' && !statusMessage" class="product-display__marquee">
         <div class="marquee-track">
           <span>Select a product to start the sale · </span>
@@ -43,6 +31,11 @@
       <div v-else-if="selectionState === 'unavailable'" class="product-display__warning">
         <span class="warning-icon">!</span>
         <p>Product unavailable</p>
+      </div>
+
+      <div v-else-if="statusMessage" :class="overlayClasses">
+        <span v-if="statusTone !== 'info'" class="overlay-icon">!</span>
+        <p>{{ statusMessage }}</p>
       </div>
     </div>
 
@@ -253,6 +246,14 @@ export default defineComponent({
 
       return null
     },
+    overlayClasses(): Record<string, boolean> {
+      return {
+        'product-display__overlay': true,
+        'product-display__overlay--error': this.statusTone === 'error',
+        'product-display__overlay--info': this.statusTone === 'info',
+        'product-display__overlay--warning': this.statusTone === 'warning',
+      }
+    },
   },
   methods: {
     handleCoinButton(value: number): void {
@@ -434,6 +435,60 @@ export default defineComponent({
   justify-content: center;
   font-size: 1.4rem;
   box-shadow: 0 8px 18px rgba(249, 115, 22, 0.35);
+}
+
+.product-display__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  border-radius: 16px;
+  padding: 1.25rem;
+  text-align: center;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.4);
+  pointer-events: none;
+  background: rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+}
+
+.product-display__overlay--error {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+.product-display__overlay--info {
+  background: rgba(129, 140, 248, 0.18);
+  border-color: rgba(129, 140, 248, 0.4);
+  color: #cdd5ff;
+}
+
+.product-display__overlay--warning {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde68a;
+}
+
+.product-display__overlay p {
+  margin: 0;
+}
+
+.overlay-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: 0 8px 18px rgba(251, 191, 36, 0.35);
 }
 
 .marquee-track {
