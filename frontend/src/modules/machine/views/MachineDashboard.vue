@@ -260,7 +260,7 @@ export default defineComponent({
       }
 
       if (value === 'CLR') {
-        this.resetSelection()
+        await this.handleClearSelection()
         return
       }
 
@@ -372,11 +372,28 @@ export default defineComponent({
       this.enteredCode = `${this.enteredCode}${value}`.slice(0, maxCodeLength)
       return this.enteredCode
     },
-    resetSelection(): void {
+    async handleClearSelection(): Promise<void> {
       this.resetEnteredCode()
+
+      const hadSelection = Boolean(this.lastConfirmedSlotCode || this.selectedSlotCode)
+
+      if (hadSelection) {
+        const ready = await this.ensureSessionReady()
+        if (ready) {
+          try {
+            await this.machineStore.clearSelection()
+          } catch (error) {
+            console.error('Failed to clear selection', error)
+          }
+        }
+      }
+
       this.selectedSlotCode = ''
       this.lastConfirmedSlotCode = ''
       this.clearSelectionTimeout()
+    },
+    resetSelection(): void {
+      void this.handleClearSelection()
     },
     resetEnteredCode(): void {
       this.enteredCode = ''

@@ -7,6 +7,7 @@ import type {
   MachineState,
 } from '@/modules/machine/api/getMachineState'
 import { getMachineState } from '@/modules/machine/api/getMachineState'
+import { clearMachineSelection } from '@/modules/machine/api/clearMachineSelection'
 import { insertMachineCoin } from '@/modules/machine/api/insertMachineCoin'
 import { selectMachineProduct } from '@/modules/machine/api/selectMachineProduct'
 import { startMachineSession } from '@/modules/machine/api/startMachineSession'
@@ -198,6 +199,47 @@ export const useMachineStore = defineStore('machine', {
     },
     clearError(): void {
       this.error = null
+    },
+    async clearSelection(): Promise<MachineSession> {
+      const activeSession = await this.ensureSession()
+
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await clearMachineSelection({
+          sessionId: activeSession.id,
+        })
+
+        if (this.machineState) {
+          this.machineState = {
+            ...this.machineState,
+            machineId: result.machineId,
+            session: result.session,
+          }
+        } else {
+          this.machineState = {
+            machineId: result.machineId,
+            timestamp: new Date().toISOString(),
+            session: result.session,
+            catalog: [],
+            coins: { available: {}, reserved: {} },
+            alerts: { insufficientChange: false, outOfStock: [] },
+          }
+        }
+
+        return result.session
+      } catch (error) {
+        if (error instanceof Error) {
+          this.error = error.message
+        } else {
+          this.error = 'Unexpected error clearing selection'
+        }
+
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
   },
 })
