@@ -1,12 +1,14 @@
 import { postJson } from '@/core/api/httpClient'
 import type { MachineSession } from '@/modules/machine/api/getMachineState'
 
-export interface StartMachineSessionResult {
+export interface MachineSessionResult {
   machineId: string
   session: MachineSession
 }
 
-type StartMachineSessionResponse = {
+export type StartMachineSessionResult = MachineSessionResult
+
+export type MachineSessionResponse = {
   machine_id: string
   session: {
     id: string
@@ -14,6 +16,7 @@ type StartMachineSessionResponse = {
     balance_cents: number
     inserted_coins: Record<string, number>
     selected_product_id: string | null
+    change_plan?: Record<string, number> | null
   }
 }
 
@@ -22,14 +25,18 @@ const toNumberRecord = (input: Record<string, number>): Record<number, number> =
     Object.entries(input).map(([key, value]) => [Number(key), value])
   )
 
-function mapResponse(response: StartMachineSessionResponse): StartMachineSessionResult {
+export function mapSessionResponse(response: MachineSessionResponse): MachineSessionResult {
+  const sessionPayload = response.session
   const session: MachineSession = {
-    id: response.session.id,
-    state: response.session.state,
-    balanceCents: response.session.balance_cents,
-    insertedCoins: toNumberRecord(response.session.inserted_coins),
-    selectedProductId: response.session.selected_product_id,
-    changePlan: null,
+    id: sessionPayload.id,
+    state: sessionPayload.state,
+    balanceCents: sessionPayload.balance_cents,
+    insertedCoins: toNumberRecord(sessionPayload.inserted_coins),
+    selectedProductId: sessionPayload.selected_product_id,
+    changePlan:
+      sessionPayload.change_plan === undefined || sessionPayload.change_plan === null
+        ? null
+        : toNumberRecord(sessionPayload.change_plan),
   }
 
   return {
@@ -38,7 +45,7 @@ function mapResponse(response: StartMachineSessionResponse): StartMachineSession
   }
 }
 
-export async function startMachineSession(): Promise<StartMachineSessionResult> {
-  const response = await postJson<StartMachineSessionResponse>('/machine/session')
-  return mapResponse(response)
+export async function startMachineSession(): Promise<MachineSessionResult> {
+  const response = await postJson<MachineSessionResponse>('/machine/session')
+  return mapSessionResponse(response)
 }

@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Machine\Infrastructure\Mongo\Document;
 
+use App\Shared\Money\Domain\Money;
+use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundle;
+use App\VendingMachine\Product\Domain\ValueObject\ProductId;
+use App\VendingMachine\Session\Domain\ValueObject\VendingSessionId;
 use App\VendingMachine\Session\Domain\ValueObject\VendingSessionState;
 use App\VendingMachine\Session\Domain\VendingSession;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
+use DomainException;
 
 #[ODM\Document(collection: 'machine_sessions')]
 class ActiveSessionDocument
@@ -115,5 +120,22 @@ class ActiveSessionDocument
         $this->selectedProductId = $session->selectedProductId()?->value();
         $this->changePlan = null;
         $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function toVendingSession(): VendingSession
+    {
+        if (null === $this->sessionId) {
+            throw new DomainException('Cannot restore session without an active session id.');
+        }
+
+        return VendingSession::restore(
+            VendingSessionId::fromString($this->sessionId),
+            VendingSessionState::from($this->state),
+            CoinBundle::fromArray($this->insertedCoins),
+            Money::fromCents($this->balanceCents),
+            null === $this->selectedProductId ? null : ProductId::fromString($this->selectedProductId),
+            null,
+            null,
+        );
     }
 }
