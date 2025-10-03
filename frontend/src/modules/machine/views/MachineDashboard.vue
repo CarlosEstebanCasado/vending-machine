@@ -34,9 +34,11 @@
         :info="panelInfo"
         :loading="loading"
         :return-disabled="returnButtonDisabled"
+        :purchase-disabled="purchaseDisabled"
         :dispensed-coins="dispensedCoins"
         @keypad="handleKeypadPress"
         @insert-coin="handleInsertCoin"
+        @purchase="handlePurchase"
         @return-coins="handleReturnCoins"
         @collect-coin="collectReturnedCoin"
       />
@@ -266,6 +268,19 @@ export default defineComponent({
     returnButtonDisabled(): boolean {
       return this.loading || this.returnInProgress || !this.canReturnCoins
     },
+    purchaseDisabled(): boolean {
+      if (this.loading || this.returnInProgress) {
+        return true
+      }
+
+      const product = this.selectedProduct
+
+      if (!product || product.priceCents === null || product.priceCents === undefined) {
+        return true
+      }
+
+      return this.balanceAmount < product.priceCents
+    },
   },
   created() {
     this.machineStore.fetchMachineState()
@@ -313,6 +328,43 @@ export default defineComponent({
         await this.machineStore.insertCoin(coinValue)
       } catch (error) {
         console.error('Failed to insert coin', error)
+      }
+    },
+    async handlePurchase(): Promise<void> {
+      if (this.purchaseDisabled) {
+        return
+      }
+
+      const ready = await this.ensureSessionReady()
+      if (!ready) {
+        return
+      }
+
+      this.setInfo('Dispensing product...')
+
+      try {
+        const result = await this.machineStore.purchaseProduct()
+
+        if (result.sale.status === 'completed') {
+          if (Object.keys(result.sale.changeDispensed).length > 0) {
+            this.enqueueReturnedCoins(result.sale.changeDispensed)
+            this.setInfo('Please collect your change')
+          } else {
+            this.setInfo('Enjoy your product!', 3000)
+          }
+
+          await this.machineStore.fetchMachineState()
+          this.selectedSlotCode = ''
+          this.lastConfirmedSlotCode = ''
+        } else if (result.sale.status === 'cancelled_insufficient_change') {
+          if (Object.keys(result.sale.returnedCoins).length > 0) {
+            this.enqueueReturnedCoins(result.sale.returnedCoins)
+          }
+
+          this.setInfo('Unable to provide exact change. Returning coins.')
+        }
+      } catch (error) {
+        console.error('Failed to complete purchase', error)
       }
     },
     async handleReturnCoins(): Promise<void> {

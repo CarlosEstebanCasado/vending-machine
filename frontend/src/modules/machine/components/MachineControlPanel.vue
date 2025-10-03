@@ -78,7 +78,14 @@
     <div class="coin-insert"></div>
 
     <div class="actions">
-      <button class="action primary" type="button" disabled>Buy product</button>
+      <button
+        class="action primary"
+        type="button"
+        :disabled="purchaseDisabled"
+        @click="$emit('purchase')"
+      >
+        Buy product
+      </button>
       <button
         class="action secondary"
         type="button"
@@ -192,6 +199,10 @@ export default defineComponent({
       type: Boolean,
       default: false,
     },
+    purchaseDisabled: {
+      type: Boolean,
+      default: false,
+    },
     returnDisabled: {
       type: Boolean,
       default: false,
@@ -201,7 +212,7 @@ export default defineComponent({
       default: () => [],
     },
   },
-  emits: ['keypad', 'insert-coin', 'return-coins', 'collect-coin'],
+  emits: ['keypad', 'insert-coin', 'return-coins', 'collect-coin', 'purchase'],
   data() {
     return {
       coins: AVAILABLE_COINS,

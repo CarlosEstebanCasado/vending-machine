@@ -5,6 +5,7 @@ import type { MachineState } from '@/modules/machine/api/getMachineState'
 import * as machineApi from '@/modules/machine/api/getMachineState'
 import * as insertCoinApi from '@/modules/machine/api/insertMachineCoin'
 import * as returnCoinsApi from '@/modules/machine/api/returnMachineCoins'
+import * as vendProductApi from '@/modules/machine/api/vendMachineProduct'
 import * as startSessionApi from '@/modules/machine/api/startMachineSession'
 
 const mockMachineState = (): MachineState => ({
@@ -142,5 +143,40 @@ describe('useMachineStore', () => {
     expect(store.machineState?.session?.balanceCents).toBe(0)
     expect(store.machineState?.session?.insertedCoins).toEqual({})
     expect(response.returnedCoins).toEqual({ 100: 1, 25: 1 })
+  })
+
+  it('completes purchase and returns change', async () => {
+    const state = mockMachineState()
+    const vendResult = {
+      machineId: 'vm-001',
+      session: {
+        ...state.session!,
+        balanceCents: 0,
+        insertedCoins: {},
+        selectedProductId: null,
+        selectedSlotCode: null,
+      },
+      sale: {
+        status: 'completed',
+        productId: 'prod-water',
+        slotCode: '11',
+        priceCents: 65,
+        changeDispensed: { 25: 1 },
+        returnedCoins: {},
+      },
+    }
+
+    vi.spyOn(vendProductApi, 'vendMachineProduct').mockResolvedValue(vendResult)
+
+    const store = useMachineStore()
+    store.machineState = state
+
+    const response = await store.purchaseProduct()
+
+    expect(vendProductApi.vendMachineProduct).toHaveBeenCalledWith(state.session!.id)
+    expect(store.machineState?.session?.balanceCents).toBe(0)
+    expect(store.machineState?.session?.selectedProductId).toBeNull()
+    expect(response.sale.status).toBe('completed')
+    expect(response.sale.changeDispensed).toEqual({ 25: 1 })
   })
 })

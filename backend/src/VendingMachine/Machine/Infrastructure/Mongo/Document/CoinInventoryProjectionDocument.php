@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Machine\Infrastructure\Mongo\Document;
 
+use App\VendingMachine\CoinInventory\Domain\CoinInventory;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
 
@@ -53,7 +54,13 @@ class CoinInventoryProjectionDocument
      */
     public function available(): array
     {
-        return array_map('intval', $this->available);
+        $result = [];
+
+        foreach ($this->available as $denomination => $quantity) {
+            $result[(int) $denomination] = (int) $quantity;
+        }
+
+        return $result;
     }
 
     /**
@@ -61,7 +68,13 @@ class CoinInventoryProjectionDocument
      */
     public function reserved(): array
     {
-        return array_map('intval', $this->reserved);
+        $result = [];
+
+        foreach ($this->reserved as $denomination => $quantity) {
+            $result[(int) $denomination] = (int) $quantity;
+        }
+
+        return $result;
     }
 
     public function insufficientChange(): bool
@@ -72,5 +85,13 @@ class CoinInventoryProjectionDocument
     public function updatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function applyInventory(CoinInventory $inventory, bool $insufficientChange): void
+    {
+        $this->available = $inventory->availableCoins()->toArray();
+        $this->reserved = $inventory->reservedCoins()->toArray();
+        $this->insufficientChange = $insufficientChange;
+        $this->updatedAt = new DateTimeImmutable();
     }
 }

@@ -21,6 +21,7 @@
             {{ item.priceCents !== null ? centsToCurrency(item.priceCents) : '—' }}
           </span>
         </div>
+        <span class="product-card__quantity">×{{ item.availableQuantity }}</span>
       </div>
     </article>
   </div>
@@ -141,6 +142,16 @@ export default defineComponent({
 
 .product-card__price {
   color: #1e293b;
+}
+
+.product-card__quantity {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.12);
+  border-radius: 999px;
+  align-self: flex-start;
+  padding: 0.25rem 0.6rem;
 }
 
 @media (max-width: 640px) {

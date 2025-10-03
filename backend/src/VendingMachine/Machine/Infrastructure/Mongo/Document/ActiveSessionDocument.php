@@ -137,6 +137,18 @@ class ActiveSessionDocument
         $this->updatedAt = new DateTimeImmutable();
     }
 
+    public function clearSession(): void
+    {
+        $this->sessionId = null;
+        $this->state = VendingSessionState::Collecting->value;
+        $this->balanceCents = 0;
+        $this->insertedCoins = [];
+        $this->selectedProductId = null;
+        $this->selectedSlotCode = null;
+        $this->changePlan = null;
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
     public function toVendingSession(): VendingSession
     {
         if (null === $this->sessionId) {
