@@ -1,0 +1,11 @@
+---
+description: User Guardrails
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# User Guardrails
+- Do not create commits or run `git push` unless the user explicitly requests it.
+- Before validating backend changes, run `make backend-ci`; for frontend changes, run `make frontend-ci`, unless the user indicates otherwise.
+- Always mention if relevant tests remain unexecuted.
+- The `app:seed-machine-state` command only populates projections; if we need real collections (products, sessions, coin inventory, slots), plan and create the proper persistence infrastructure first.

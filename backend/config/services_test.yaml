@@ -1,4 +1,6 @@
 services:
     App\Tests\Doubles\MachineStateProviderStub: ~
+    App\Tests\Doubles\StartSessionCommandHandlerStub: ~
 
     App\VendingMachine\Machine\Application\Service\MachineStateProvider: '@App\Tests\Doubles\MachineStateProviderStub'
+    App\VendingMachine\Session\Application\StartSession\StartSessionCommandHandler: '@App\Tests\Doubles\StartSessionCommandHandlerStub'
