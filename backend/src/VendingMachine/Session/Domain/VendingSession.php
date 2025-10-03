@@ -125,6 +125,21 @@ final class VendingSession
         $this->selectedProductId = null;
     }
 
+    public function returnCoins(): CoinBundle
+    {
+        $this->ensureStateIs(VendingSessionState::Collecting);
+
+        $coins = $this->insertedCoins;
+
+        $this->insertedCoins = CoinBundle::empty();
+        $this->balance = Money::fromCents(0);
+        $this->selectedProductId = null;
+
+        $this->ensureStateConsistency();
+
+        return $coins;
+    }
+
     public function approvePurchase(Money $price, CoinBundle $change): void
     {
         $this->ensureStateIs(VendingSessionState::Collecting);

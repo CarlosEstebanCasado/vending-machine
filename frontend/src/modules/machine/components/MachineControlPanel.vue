@@ -74,12 +74,30 @@
 
     <div class="actions">
       <button class="action primary" type="button" disabled>Buy product</button>
-      <button class="action secondary" type="button" disabled>Return coin</button>
+      <button
+        class="action secondary"
+        type="button"
+        :disabled="returnDisabled"
+        @click="$emit('return-coins')"
+      >
+        Return coins
+      </button>
     </div>
 
-    <div class="coin-slot"></div>
+    <div class="coin-slot">
+      <button
+        v-for="coin in dispensedCoins"
+        :key="coin.id"
+        class="coin-slot__coin"
+        type="button"
+        @click="$emit('collect-coin', coin.id)"
+      >
+        {{ coin.label }}
+      </button>
+    </div>
 
     <p v-if="error" class="inline-alert error">{{ error }}</p>
+    <p v-else-if="info" class="inline-alert info">{{ info }}</p>
     <p v-else-if="alerts.outOfStock.length" class="inline-alert warning">
       Out of stock: {{ alerts.outOfStock.join(', ') }}
     </p>
@@ -98,6 +116,12 @@ type CoinDefinition = {
 }
 
 type CoinAnimation = CoinDefinition & { id: number }
+
+export type DispensedCoin = {
+  id: number
+  label: string
+  value: number
+}
 
 const AVAILABLE_COINS: CoinDefinition[] = [
   { label: '€1.00', value: 100 },
@@ -161,12 +185,24 @@ export default defineComponent({
       type: String as PropType<string | null>,
       default: null,
     },
+    info: {
+      type: String as PropType<string | null>,
+      default: null,
+    },
     loading: {
       type: Boolean,
       default: false,
     },
+    returnDisabled: {
+      type: Boolean,
+      default: false,
+    },
+    dispensedCoins: {
+      type: Array as PropType<DispensedCoin[]>,
+      default: () => [],
+    },
   },
-  emits: ['keypad', 'insert-coin'],
+  emits: ['keypad', 'insert-coin', 'return-coins', 'collect-coin'],
   data() {
     return {
       coins: AVAILABLE_COINS,
@@ -432,7 +468,7 @@ export default defineComponent({
   padding: 0.75rem 1.25rem;
   font-weight: 600;
   font-size: 1rem;
-  cursor: not-allowed;
+  cursor: pointer;
 }
 
 .action.primary {
@@ -445,11 +481,38 @@ export default defineComponent({
   color: #cbd5f5;
 }
 
+.action[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .coin-slot {
-  height: 160px;
+  min-height: 160px;
   border-radius: 18px;
   background: linear-gradient(180deg, #111827 0%, #050a13 100%);
   box-shadow: inset 0 18px 32px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
+}
+
+.coin-slot__coin {
+  background: linear-gradient(160deg, #fbbf24 0%, #f97316 100%);
+  border: none;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.coin-slot__coin:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px rgba(249, 115, 22, 0.45);
 }
 
 .coin-animations {
@@ -474,6 +537,12 @@ export default defineComponent({
 .inline-alert.warning {
   background: rgba(251, 191, 36, 0.15);
   color: #fde68a;
+}
+
+.inline-alert.info {
+  background: rgba(129, 140, 248, 0.15);
+  border-color: rgba(129, 140, 248, 0.35);
+  color: #cdd5ff;
 }
 
 @media (max-width: 1024px) {
