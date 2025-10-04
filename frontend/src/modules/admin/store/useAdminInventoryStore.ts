@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { adjustSlotInventory, type AdjustSlotInventoryOperation } from '@/modules/admin/api/adjustSlotInventory'
-import { getSlotInventory, type AdminSlotInventoryItem, type AdminSlotInventoryResponse } from '@/modules/admin/api/getSlotInventory'
+import { getSlotInventory, type AdminSlotInventoryItem } from '@/modules/admin/api/getSlotInventory'
 
 interface AdminInventoryFilters {
   status: 'all' | 'available' | 'reserved' | 'disabled'

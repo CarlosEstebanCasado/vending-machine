@@ -179,9 +179,9 @@ final class VendProductCommandHandlerTest extends TestCase
         );
 
         $repository = $this->createMock(DocumentRepository::class);
-        $repository->expects(self::once())
+        $repository->expects(self::exactly(2))
             ->method('findOneBy')
-            ->willReturn($slotDocument);
+            ->willReturnOnConsecutiveCalls($slotDocument, $slotDocument);
 
         $coinInventoryRepository = $this->createMock(CoinInventoryRepository::class);
         $coinInventoryRepository->expects(self::once())
@@ -198,17 +198,31 @@ final class VendProductCommandHandlerTest extends TestCase
                 [ActiveSessionDocument::class, 'machine-1', $sessionDocument],
                 [CoinInventoryProjectionDocument::class, 'machine-1', $coinInventoryDocument],
             ]);
-        $documentManager->expects(self::once())
+        $documentManager->expects(self::exactly(2))
             ->method('getRepository')
+            ->with(SlotProjectionDocument::class)
             ->willReturn($repository);
         $documentManager->expects(self::once())
             ->method('flush');
 
+        $slot = InventorySlot::restore(
+            InventorySlotId::fromString('slot-1'),
+            SlotCode::fromString('11'),
+            SlotCapacity::fromInt(10),
+            SlotQuantity::fromInt(2),
+            RestockThreshold::fromInt(1),
+            SlotStatus::Reserved,
+            null,
+        );
+
         $slotRepository = $this->createMock(InventorySlotRepository::class);
-        $slotRepository->expects(self::never())
-            ->method('findByMachineAndCode');
-        $slotRepository->expects(self::never())
-            ->method('save');
+        $slotRepository->expects(self::once())
+            ->method('findByMachineAndCode')
+            ->with('machine-1', SlotCode::fromString('11'))
+            ->willReturn($slot);
+        $slotRepository->expects(self::once())
+            ->method('save')
+            ->with(self::callback(static fn (InventorySlot $released): bool => !$released->status()->isReserved()), 'machine-1');
 
         $handler = new VendProductCommandHandler($documentManager, $coinInventoryRepository, new ChangeAvailabilityChecker(), $slotRepository);
 
@@ -235,13 +249,13 @@ final class VendProductCommandHandlerTest extends TestCase
             balanceCents: 25,
             insertedCoins: [25 => 1],
             selectedProductId: 'product-1',
-            selectedSlotCode: 'A1',
+            selectedSlotCode: '11',
             changePlan: null,
         );
 
         $slotDocument = new SlotProjectionDocument(
             machineId: 'machine-1',
-            slotCode: 'A1',
+            slotCode: '11',
             capacity: 10,
             recommendedSlotQuantity: 6,
             quantity: 2,

@@ -206,6 +206,7 @@ final class VendProductCommandHandler
         $sessionSnapshot = $this->createSessionSnapshot($session);
 
         $sessionDocument->clearSession();
+        $this->releaseSlot($slotCode, $sessionDocument->machineId());
         $this->documentManager->flush();
 
         return new VendProductResult(
@@ -244,7 +245,13 @@ final class VendProductCommandHandler
 
         if (null !== $slotAggregate) {
             $slotAggregate->removeStock(1);
+            if ($slotAggregate->quantity()->isZero()) {
+                $slotAggregate->disable();
+            } else {
+                $slotAggregate->markAvailable();
+            }
             $this->slotRepository->save($slotAggregate, $machineId);
+            $this->syncSlotProjectionFromAggregate($machineId, $slotCode, $slotAggregate, $slotDocument);
         }
 
         $priceMoney = Money::fromCents($priceCents);
@@ -289,6 +296,55 @@ final class VendProductCommandHandler
             insertedCoins: $session->insertedCoins()->toArray(),
             selectedProductId: $session->selectedProductId()?->value(),
             selectedSlotCode: null,
+        );
+    }
+
+    private function releaseSlot(string $slotCode, string $machineId): void
+    {
+        $slotAggregate = $this->slotRepository->findByMachineAndCode($machineId, SlotCode::fromString($slotCode));
+
+        if (null === $slotAggregate) {
+            return;
+        }
+
+        if ($slotAggregate->quantity()->isZero()) {
+            $slotAggregate->disable();
+        } else {
+            $slotAggregate->markAvailable();
+        }
+
+        $this->slotRepository->save($slotAggregate, $machineId);
+        $this->syncSlotProjectionFromAggregate($machineId, $slotCode, $slotAggregate);
+    }
+
+    private function syncSlotProjectionFromAggregate(
+        string $machineId,
+        string $slotCode,
+        \App\VendingMachine\Inventory\Domain\InventorySlot $slotAggregate,
+        ?SlotProjectionDocument $loadedProjection = null,
+    ): void {
+        $projection = $loadedProjection;
+
+        if (null === $projection) {
+            $projection = $this->documentManager->getRepository(SlotProjectionDocument::class)->findOneBy([
+                'machineId' => $machineId,
+                'slotCode' => $slotCode,
+            ]);
+        }
+
+        if (null === $projection) {
+            return;
+        }
+
+        $projection->syncFromInventory(
+            slotQuantity: $slotAggregate->quantity()->value(),
+            slotCapacity: $slotAggregate->capacity()->value(),
+            status: $slotAggregate->status()->value,
+            lowStock: $slotAggregate->needsRestock(),
+            productId: $slotAggregate->productId()?->value(),
+            productName: $projection->productName(),
+            priceCents: $projection->priceCents(),
+            recommendedSlotQuantity: $projection->recommendedSlotQuantity(),
         );
     }
 }

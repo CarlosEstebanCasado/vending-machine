@@ -26,7 +26,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(errorBody || response.statusText || 'Request failed');
+    let message = response.statusText || 'Request failed';
+
+    if (errorBody) {
+      try {
+        const parsed = JSON.parse(errorBody) as { error?: { message?: string }; message?: string } | null;
+        if (parsed?.error?.message) {
+          message = parsed.error.message;
+        } else if (parsed?.message && typeof parsed.message === 'string') {
+          message = parsed.message;
+        } else {
+          message = errorBody;
+        }
+      } catch {
+        message = errorBody;
+      }
+    }
+
+    throw new Error(message);
   }
 
   if (response.status === 204) {

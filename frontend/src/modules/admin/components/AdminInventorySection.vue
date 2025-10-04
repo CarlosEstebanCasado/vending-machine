@@ -347,14 +347,21 @@ async function submitAdjustment(): Promise<void> {
   color: #cbd5f5;
 }
 
+
 .inventory__refresh {
   border: none;
-  background: #334155;
+  background: rgba(51, 65, 85, 0.9);
   color: #f8fafc;
   border-radius: 999px;
-  padding: 0.6rem 1.4rem;
+  padding: 0.5rem 1.2rem;
   font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  cursor: pointer;
   transition: background 0.2s ease-in-out;
+}
+
+.inventory__refresh:hover {
+  background: rgba(71, 85, 105, 0.95);
 }
 
 .inventory__refresh:disabled {
@@ -468,6 +475,7 @@ async function submitAdjustment(): Promise<void> {
   color: inherit;
   padding: 0.85rem 0.9rem;
   text-align: left;
+  cursor: pointer;
 }
 
 .inventory__slot-code {
@@ -603,24 +611,27 @@ async function submitAdjustment(): Promise<void> {
 }
 
 .inventory__operation {
-  display: flex;
-  gap: 0.5rem;
+  display: inline-flex;
+  gap: 0.4rem;
   border: none;
-  padding: 0;
+  padding: 0.05rem 0;
   margin: 0;
 }
 
 .inventory__operation-option {
-  flex: 1;
+  flex: 0 0 auto;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.3);
   background: rgba(15, 23, 42, 0.85);
   color: #f8fafc;
-  padding: 0.5rem;
-  display: flex;
+  padding: 0.28rem 0.85rem;
+  display: inline-flex;
   justify-content: center;
-  font-size: 0.9rem;
-  gap: 0.35rem;
+  align-items: center;
+  font-size: 0.8rem;
+  gap: 0.3rem;
+  min-width: 6rem;
+  cursor: pointer;
 }
 
 .inventory__operation-option input {
@@ -665,6 +676,7 @@ async function submitAdjustment(): Promise<void> {
   border-radius: 999px;
   padding: 0.65rem 1.6rem;
   transition: background 0.2s ease-in-out;
+  cursor: pointer;
 }
 
 .inventory__submit:disabled {

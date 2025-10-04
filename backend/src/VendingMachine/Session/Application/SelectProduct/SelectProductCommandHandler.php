@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Session\Application\SelectProduct;
 
+use App\VendingMachine\Inventory\Domain\InventorySlot;
+use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
+use App\VendingMachine\Inventory\Domain\ValueObject\SlotCode;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
 use App\VendingMachine\Product\Domain\ValueObject\ProductId;
 use App\VendingMachine\Session\Application\StartSession\StartSessionResult;
 use Doctrine\ODM\MongoDB\DocumentManager;
@@ -14,6 +18,7 @@ final class SelectProductCommandHandler
 {
     public function __construct(
         private readonly DocumentManager $documentManager,
+        private readonly InventorySlotRepository $slotRepository,
     ) {
     }
 
@@ -30,6 +35,35 @@ final class SelectProductCommandHandler
             throw new DomainException('The provided session id does not match the active session.');
         }
 
+        $previousSlotCode = $document->selectedSlotCode();
+
+        $slotCode = SlotCode::fromString($command->slotCode);
+        $slot = $this->slotRepository->findByMachineAndCode($command->machineId, $slotCode);
+
+        if (null === $slot) {
+            throw new DomainException(sprintf('Slot "%s" not found for machine "%s".', $command->slotCode, $command->machineId));
+        }
+
+        if ($slot->quantity()->isZero()) {
+            throw new DomainException('Selected slot is empty.');
+        }
+
+        if ($slot->status()->isDisabled()) {
+            throw new DomainException('Selected slot is disabled.');
+        }
+
+        if ($slot->status()->isReserved() && $previousSlotCode !== $command->slotCode) {
+            throw new DomainException('Selected slot is currently reserved.');
+        }
+
+        if (null !== $previousSlotCode && $previousSlotCode !== $command->slotCode) {
+            $this->releaseSlot($command->machineId, $previousSlotCode);
+        }
+
+        $slot->markReserved();
+        $this->slotRepository->save($slot, $command->machineId);
+        $this->syncProjection($command->machineId, $command->slotCode, $slot);
+
         $session = $document->toVendingSession();
         $session->selectProduct(ProductId::fromString($command->productId));
 
@@ -44,6 +78,50 @@ final class SelectProductCommandHandler
             insertedCoins: $session->insertedCoins()->toArray(),
             selectedProductId: $session->selectedProductId()?->value(),
             selectedSlotCode: $document->selectedSlotCode(),
+        );
+    }
+
+    private function releaseSlot(string $machineId, string $slotCode): void
+    {
+        $slot = $this->slotRepository->findByMachineAndCode($machineId, SlotCode::fromString($slotCode));
+
+        if (null === $slot) {
+            return;
+        }
+
+        if ($slot->quantity()->isZero()) {
+            $slot->disable();
+        } else {
+            $slot->markAvailable();
+        }
+
+        $this->slotRepository->save($slot, $machineId);
+        $this->syncProjection($machineId, $slotCode, $slot);
+    }
+
+    private function syncProjection(string $machineId, string $slotCode, InventorySlot $slot): void
+    {
+        $repository = $this->documentManager->getRepository(SlotProjectionDocument::class);
+
+        /** @var SlotProjectionDocument|null $projection */
+        $projection = $repository->findOneBy([
+            'machineId' => $machineId,
+            'slotCode' => $slotCode,
+        ]);
+
+        if (null === $projection) {
+            return;
+        }
+
+        $projection->syncFromInventory(
+            slotQuantity: $slot->quantity()->value(),
+            slotCapacity: $slot->capacity()->value(),
+            status: $slot->status()->value,
+            lowStock: $slot->needsRestock(),
+            productId: $slot->productId()?->value(),
+            productName: $projection->productName(),
+            priceCents: $projection->priceCents(),
+            recommendedSlotQuantity: $projection->recommendedSlotQuantity(),
         );
     }
 }

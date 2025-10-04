@@ -386,17 +386,19 @@ function selectTab(tab: 'coins' | 'inventory'): void {
 
 .admin-dashboard__logout {
   border: none;
-  background: rgba(15, 23, 42, 0.8);
-  color: #f8fafc;
+  background: #f87171;
+  color: #0f172a;
   font-weight: 600;
   border-radius: 999px;
   padding: 0.6rem 1.5rem;
   border: 1px solid rgba(148, 163, 184, 0.3);
   transition: transform 0.2s ease-in-out;
+  cursor: pointer;
 }
 
 .admin-dashboard__logout:hover {
   transform: translateY(-1px);
+  background: #ef4444;
 }
 
 .admin-dashboard__tabs {
@@ -417,6 +419,7 @@ function selectTab(tab: 'coins' | 'inventory'): void {
   border-radius: 999px;
   padding: 0.45rem 1.4rem;
   transition: background 0.2s ease-in-out;
+  cursor: pointer;
 }
 
 .admin-dashboard__tab--active {
@@ -528,24 +531,27 @@ function selectTab(tab: 'coins' | 'inventory'): void {
 }
 
 .coin-adjustment__operation {
-  display: flex;
+  display: inline-flex;
   border: none;
-  gap: 0.75rem;
+  gap: 0.5rem;
   margin: 0;
-  padding: 0;
+  padding: 0.1rem 0;
 }
 
 .coin-adjustment__operation-option {
-  flex: 1;
+  flex: 0 0 auto;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.3);
   background: rgba(15, 23, 42, 0.85);
   color: #f8fafc;
-  padding: 0.5rem;
-  display: flex;
+  padding: 0.3rem 0.85rem;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  min-width: 6rem;
+  cursor: pointer;
 }
 
 .coin-adjustment__operation-option input {
@@ -606,6 +612,7 @@ function selectTab(tab: 'coins' | 'inventory'): void {
   border-radius: 999px;
   padding: 0.6rem 1.6rem;
   transition: background 0.2s ease-in-out;
+  cursor: pointer;
 }
 
 .coin-adjustment__submit:disabled {
@@ -613,14 +620,22 @@ function selectTab(tab: 'coins' | 'inventory'): void {
   cursor: not-allowed;
 }
 
-.coin-refresh {
+.coin-refresh,
+.inventory__refresh {
   border: none;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(51, 65, 85, 0.9);
   color: #f8fafc;
   border-radius: 999px;
   padding: 0.5rem 1.2rem;
   font-weight: 600;
   border: 1px solid rgba(148, 163, 184, 0.3);
+  cursor: pointer;
+  transition: background 0.2s ease-in-out;
+}
+
+.coin-refresh:hover,
+.inventory__refresh:hover {
+  background: rgba(71, 85, 105, 0.95);
 }
 
 @media (max-width: 960px) {
