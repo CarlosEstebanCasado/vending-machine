@@ -1,0 +1,368 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Unit\AdminPanel\Inventory\Application\AdjustSlotInventory;
+
+use App\AdminPanel\Inventory\Application\AdjustSlotInventory\AdjustSlotInventoryOperation;
+use App\AdminPanel\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommand;
+use App\AdminPanel\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommandHandler;
+use App\Shared\Money\Domain\Money;
+use App\VendingMachine\Inventory\Domain\InventorySlot;
+use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
+use App\VendingMachine\Inventory\Domain\ValueObject\InventorySlotId;
+use App\VendingMachine\Inventory\Domain\ValueObject\RestockThreshold;
+use App\VendingMachine\Inventory\Domain\ValueObject\SlotCapacity;
+use App\VendingMachine\Inventory\Domain\ValueObject\SlotCode;
+use App\VendingMachine\Inventory\Domain\ValueObject\SlotQuantity;
+use App\VendingMachine\Inventory\Domain\ValueObject\SlotStatus;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
+use App\VendingMachine\Product\Domain\Product;
+use App\VendingMachine\Product\Domain\ProductRepository;
+use App\VendingMachine\Product\Domain\ValueObject\ProductId;
+use App\VendingMachine\Product\Domain\ValueObject\ProductName;
+use App\VendingMachine\Product\Domain\ValueObject\ProductSku;
+use App\VendingMachine\Product\Domain\ValueObject\ProductStatus;
+use App\VendingMachine\Product\Domain\ValueObject\RecommendedSlotQuantity;
+use Doctrine\ODM\MongoDB\DocumentManager;
+use Doctrine\ODM\MongoDB\Repository\DocumentRepository;
+use InvalidArgumentException;
+use PHPUnit\Framework\TestCase;
+
+final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
+{
+    public function testRestockAssignsProductAndUpdatesProjection(): void
+    {
+        $slot = InventorySlot::create(
+            InventorySlotId::fromString('slot-1'),
+            SlotCode::fromString('11'),
+            SlotCapacity::fromInt(10),
+            SlotQuantity::fromInt(0),
+        );
+
+        $slotRepository = $this->createMock(InventorySlotRepository::class);
+        $slotRepository->expects(self::once())
+            ->method('findByMachineAndCode')
+            ->with('machine-1', self::callback(static fn (SlotCode $code): bool => '11' === $code->value()))
+            ->willReturn($slot);
+        $slotRepository->expects(self::once())
+            ->method('save')
+            ->with(self::callback(function (InventorySlot $savedSlot): bool {
+                return 3 === $savedSlot->quantity()->value()
+                    && 'product-1' === $savedSlot->productId()?->value()
+                    && SlotStatus::Available === $savedSlot->status();
+            }), 'machine-1');
+
+        $product = Product::create(
+            ProductId::fromString('product-1'),
+            ProductSku::fromString('SKU-001'),
+            ProductName::fromString('Water'),
+            Money::fromCents(65),
+            ProductStatus::Active,
+            RecommendedSlotQuantity::fromInt(8),
+        );
+
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->expects(self::once())
+            ->method('find')
+            ->with(ProductId::fromString('product-1'))
+            ->willReturn($product);
+
+        $projection = new SlotProjectionDocument(
+            machineId: 'machine-1',
+            slotCode: '11',
+            capacity: 10,
+            recommendedSlotQuantity: 8,
+            quantity: 0,
+            status: SlotStatus::Available->value,
+            lowStock: true,
+            productId: null,
+            productName: null,
+            priceCents: null,
+        );
+
+        $documentRepository = $this->createMock(DocumentRepository::class);
+        $documentRepository->expects(self::once())
+            ->method('findOneBy')
+            ->with([
+                'machineId' => 'machine-1',
+                'slotCode' => '11',
+            ])
+            ->willReturn($projection);
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->expects(self::once())
+            ->method('getRepository')
+            ->with(SlotProjectionDocument::class)
+            ->willReturn($documentRepository);
+        $documentManager->expects(self::once())
+            ->method('flush');
+
+        $handler = new AdminAdjustSlotInventoryCommandHandler($slotRepository, $productRepository, $documentManager);
+
+        $command = new AdminAdjustSlotInventoryCommand(
+            machineId: 'machine-1',
+            slotCode: '11',
+            operation: AdjustSlotInventoryOperation::Restock,
+            quantity: 3,
+            productId: 'product-1',
+        );
+
+        $handler($command);
+
+        self::assertSame(3, $projection->quantity());
+        self::assertSame('product-1', $projection->productId());
+        self::assertSame('Water', $projection->productName());
+        self::assertSame(65, $projection->priceCents());
+    }
+
+    public function testQuantityMustBeGreaterThanZero(): void
+    {
+        $slotRepository = $this->createMock(InventorySlotRepository::class);
+        $slotRepository->expects(self::never())->method('findByMachineAndCode');
+        $slotRepository->expects(self::never())->method('save');
+
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->expects(self::never())->method('find');
+        $productRepository->expects(self::never())->method('all');
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->expects(self::never())->method('getRepository');
+        $documentManager->expects(self::never())->method('flush');
+
+        $handler = new AdminAdjustSlotInventoryCommandHandler($slotRepository, $productRepository, $documentManager);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Quantity must be greater than zero.');
+
+        $handler(new AdminAdjustSlotInventoryCommand(
+            machineId: 'machine-1',
+            slotCode: '11',
+            operation: AdjustSlotInventoryOperation::Restock,
+            quantity: 0,
+            productId: 'product-1',
+        ));
+    }
+
+    public function testRestockFailsWhenSlotDoesNotExist(): void
+    {
+        $slotRepository = $this->createMock(InventorySlotRepository::class);
+        $slotRepository->expects(self::once())
+            ->method('findByMachineAndCode')
+            ->willReturn(null);
+
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->expects(self::never())->method('find');
+        $productRepository->expects(self::never())->method('all');
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->expects(self::never())->method('getRepository');
+        $documentManager->expects(self::never())->method('flush');
+
+        $handler = new AdminAdjustSlotInventoryCommandHandler($slotRepository, $productRepository, $documentManager);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Slot "11" not found for machine "machine-1".');
+
+        $handler(new AdminAdjustSlotInventoryCommand(
+            machineId: 'machine-1',
+            slotCode: '11',
+            operation: AdjustSlotInventoryOperation::Restock,
+            quantity: 3,
+            productId: 'product-1',
+        ));
+    }
+
+    public function testRestockRequiresProductId(): void
+    {
+        $slot = InventorySlot::create(
+            InventorySlotId::fromString('slot-1'),
+            SlotCode::fromString('11'),
+            SlotCapacity::fromInt(10),
+        );
+
+        $slotRepository = $this->createMock(InventorySlotRepository::class);
+        $slotRepository->expects(self::once())
+            ->method('findByMachineAndCode')
+            ->willReturn($slot);
+
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->expects(self::never())->method('find');
+        $productRepository->expects(self::never())->method('all');
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->expects(self::never())->method('getRepository');
+        $documentManager->expects(self::never())->method('flush');
+
+        $handler = new AdminAdjustSlotInventoryCommandHandler($slotRepository, $productRepository, $documentManager);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Product id must be provided when restocking a slot.');
+
+        $handler(new AdminAdjustSlotInventoryCommand(
+            machineId: 'machine-1',
+            slotCode: '11',
+            operation: AdjustSlotInventoryOperation::Restock,
+            quantity: 3,
+            productId: null,
+        ));
+    }
+
+    public function testRestockFailsWhenProductNotFound(): void
+    {
+        $slot = InventorySlot::create(
+            InventorySlotId::fromString('slot-1'),
+            SlotCode::fromString('11'),
+            SlotCapacity::fromInt(10),
+        );
+
+        $slotRepository = $this->createMock(InventorySlotRepository::class);
+        $slotRepository->expects(self::once())
+            ->method('findByMachineAndCode')
+            ->willReturn($slot);
+
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->expects(self::once())
+            ->method('find')
+            ->with(ProductId::fromString('product-unknown'))
+            ->willReturn(null);
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->expects(self::never())->method('getRepository');
+        $documentManager->expects(self::never())->method('flush');
+
+        $handler = new AdminAdjustSlotInventoryCommandHandler($slotRepository, $productRepository, $documentManager);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Product not found.');
+
+        $handler(new AdminAdjustSlotInventoryCommand(
+            machineId: 'machine-1',
+            slotCode: '11',
+            operation: AdjustSlotInventoryOperation::Restock,
+            quantity: 3,
+            productId: 'product-unknown',
+        ));
+    }
+
+    public function testRestockFailsWhenSlotAssignedToAnotherProduct(): void
+    {
+        $slot = InventorySlot::restore(
+            InventorySlotId::fromString('slot-1'),
+            SlotCode::fromString('11'),
+            SlotCapacity::fromInt(10),
+            SlotQuantity::fromInt(2),
+            RestockThreshold::fromInt(1),
+            SlotStatus::Available,
+            ProductId::fromString('product-1'),
+        );
+
+        $slotRepository = $this->createMock(InventorySlotRepository::class);
+        $slotRepository->expects(self::once())
+            ->method('findByMachineAndCode')
+            ->willReturn($slot);
+
+        $product = Product::create(
+            ProductId::fromString('product-2'),
+            ProductSku::fromString('SKU-002'),
+            ProductName::fromString('Juice'),
+            Money::fromCents(120),
+            ProductStatus::Active,
+            RecommendedSlotQuantity::fromInt(6),
+        );
+
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->expects(self::once())
+            ->method('find')
+            ->with(ProductId::fromString('product-2'))
+            ->willReturn($product);
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->expects(self::never())->method('getRepository');
+        $documentManager->expects(self::never())->method('flush');
+
+        $handler = new AdminAdjustSlotInventoryCommandHandler($slotRepository, $productRepository, $documentManager);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Slot already assigned to a different product.');
+
+        $handler(new AdminAdjustSlotInventoryCommand(
+            machineId: 'machine-1',
+            slotCode: '11',
+            operation: AdjustSlotInventoryOperation::Restock,
+            quantity: 1,
+            productId: 'product-2',
+        ));
+    }
+
+    public function testWithdrawClearsSlotWhenEmpty(): void
+    {
+        $slot = InventorySlot::restore(
+            InventorySlotId::fromString('slot-1'),
+            SlotCode::fromString('11'),
+            SlotCapacity::fromInt(10),
+            SlotQuantity::fromInt(2),
+            RestockThreshold::fromInt(1),
+            SlotStatus::Available,
+            ProductId::fromString('product-1'),
+        );
+
+        $slotRepository = $this->createMock(InventorySlotRepository::class);
+        $slotRepository->expects(self::once())
+            ->method('findByMachineAndCode')
+            ->with('machine-1', self::callback(static fn (SlotCode $code): bool => '11' === $code->value()))
+            ->willReturn($slot);
+        $slotRepository->expects(self::once())
+            ->method('save')
+            ->with(self::callback(function (InventorySlot $savedSlot): bool {
+                return 0 === $savedSlot->quantity()->value()
+                    && null === $savedSlot->productId()
+                    && SlotStatus::Disabled === $savedSlot->status();
+            }), 'machine-1');
+
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->expects(self::never())
+            ->method('find');
+
+        $projection = new SlotProjectionDocument(
+            machineId: 'machine-1',
+            slotCode: '11',
+            capacity: 10,
+            recommendedSlotQuantity: 8,
+            quantity: 2,
+            status: SlotStatus::Available->value,
+            lowStock: false,
+            productId: 'product-1',
+            productName: 'Water',
+            priceCents: 65,
+        );
+
+        $documentRepository = $this->createMock(DocumentRepository::class);
+        $documentRepository->expects(self::once())
+            ->method('findOneBy')
+            ->willReturn($projection);
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->expects(self::once())
+            ->method('getRepository')
+            ->willReturn($documentRepository);
+        $documentManager->expects(self::once())
+            ->method('flush');
+
+        $handler = new AdminAdjustSlotInventoryCommandHandler($slotRepository, $productRepository, $documentManager);
+
+        $command = new AdminAdjustSlotInventoryCommand(
+            machineId: 'machine-1',
+            slotCode: '11',
+            operation: AdjustSlotInventoryOperation::Withdraw,
+            quantity: 2,
+            productId: null,
+        );
+
+        $handler($command);
+
+        self::assertSame(0, $projection->quantity());
+        self::assertNull($projection->productId());
+        self::assertSame(SlotStatus::Disabled->value, $projection->status());
+    }
+}

@@ -10,6 +10,8 @@ use App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository;
 use App\VendingMachine\CoinInventory\Domain\CoinInventorySnapshot;
 use App\VendingMachine\CoinInventory\Domain\Service\ChangeAvailabilityChecker;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundle;
+use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
+use App\VendingMachine\Inventory\Domain\ValueObject\SlotCode;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
@@ -26,6 +28,7 @@ final class VendProductCommandHandler
         private readonly DocumentManager $documentManager,
         private readonly CoinInventoryRepository $coinInventoryRepository,
         private readonly ChangeAvailabilityChecker $changeAvailabilityChecker,
+        private readonly InventorySlotRepository $slotRepository,
     ) {
     }
 
@@ -236,6 +239,13 @@ final class VendProductCommandHandler
         }
 
         $slotDocument->dispenseProduct();
+
+        $slotAggregate = $this->slotRepository->findByMachineAndCode($machineId, SlotCode::fromString($slotCode));
+
+        if (null !== $slotAggregate) {
+            $slotAggregate->removeStock(1);
+            $this->slotRepository->save($slotAggregate, $machineId);
+        }
 
         $priceMoney = Money::fromCents($priceCents);
         $session->approvePurchase($priceMoney, $changeBundle);

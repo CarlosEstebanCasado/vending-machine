@@ -146,4 +146,26 @@ class SlotProjectionDocument
         $this->lowStock = $this->quantity <= $threshold;
         $this->status = SlotStatus::Available->value;
     }
+
+    public function syncFromInventory(
+        int $slotQuantity,
+        int $slotCapacity,
+        string $status,
+        bool $lowStock,
+        ?string $productId,
+        ?string $productName,
+        ?int $priceCents,
+        ?int $recommendedSlotQuantity,
+    ): void {
+        $this->quantity = $slotQuantity;
+        $this->capacity = $slotCapacity;
+        $this->status = $status;
+        $this->lowStock = $lowStock;
+        $this->productId = $productId;
+        $this->productName = $productName;
+        $this->priceCents = $priceCents;
+        if (null !== $recommendedSlotQuantity) {
+            $this->recommendedSlotQuantity = $recommendedSlotQuantity;
+        }
+    }
 }
