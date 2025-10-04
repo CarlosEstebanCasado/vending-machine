@@ -60,15 +60,26 @@
             :class="['inventory__slot', { 'inventory__slot--active': slot.code === store.selectedSlotCode }]"
           >
             <button type="button" @click="store.selectSlot(slot.code)">
-              <span class="inventory__slot-code">{{ slot.code }}</span>
-              <span class="inventory__slot-product">{{ slot.productName ?? 'Unassigned' }}</span>
-              <span class="inventory__slot-quantity">{{ slot.quantity }}/{{ slot.capacity }}</span>
-              <span
-                class="inventory__slot-status"
-                :class="statusClass(slot)"
-              >
-                {{ statusLabel(slot.status) }}
-              </span>
+              <div class="inventory__slot-line">
+                <span class="inventory__slot-code">{{ slot.code }}</span>
+                <span
+                  class="inventory__slot-status"
+                  :class="statusClass(slot)"
+                >
+                  {{ statusLabel(slot.status) }}
+                </span>
+              </div>
+              <div class="inventory__slot-line inventory__slot-line--secondary">
+                <span
+                  class="inventory__slot-product"
+                  :title="slot.productName ?? 'Unassigned'"
+                >
+                  {{ slot.productName ?? 'Unassigned' }}
+                </span>
+                <span class="inventory__slot-quantity" :title="`${slot.quantity} / ${slot.capacity}`">
+                  {{ slot.quantity }}/{{ slot.capacity }}
+                </span>
+              </div>
             </button>
           </li>
         </ul>
@@ -232,11 +243,15 @@ const productSelectionVisible = computed(() => {
     return false
   }
 
-  if (!selectedSlot.value) {
+  const slot = selectedSlot.value
+
+  if (!slot) {
     return false
   }
 
-  return selectedSlot.value.productId === null || productOptions.value.length > 0
+  const slotReadyForAssignment = slot.quantity === 0 && slot.productId === null
+
+  return slotReadyForAssignment && productOptions.value.length > 0
 })
 
 watch(selectedSlot, (slot) => {
@@ -248,6 +263,12 @@ watch(selectedSlot, (slot) => {
 
 watch(operation, () => {
   store.resetFeedback()
+})
+
+watch(productSelectionVisible, (visible) => {
+  if (!visible) {
+    selectedProductId.value = ''
+  }
 })
 
 function statusLabel(status: AdminSlotInventoryItem['status']): string {
@@ -448,13 +469,13 @@ async function submitAdjustment(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-height: 22rem;
+  max-height: 24rem;
   overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
 .inventory__slot {
   border-radius: 16px;
-  overflow: hidden;
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid transparent;
 }
@@ -466,16 +487,28 @@ async function submitAdjustment(): Promise<void> {
 
 .inventory__slot button {
   width: 100%;
-  display: grid;
-  grid-template-columns: 0.75fr 1.1fr auto;
-  gap: 0.5rem;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   background: transparent;
   border: none;
   color: inherit;
-  padding: 0.85rem 0.9rem;
+  padding: 0.9rem;
   text-align: left;
   cursor: pointer;
+}
+
+.inventory__slot-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.inventory__slot-line--secondary {
+  font-size: 0.85rem;
+  color: #cbd5f5;
+  align-items: flex-start;
 }
 
 .inventory__slot-code {
@@ -483,13 +516,15 @@ async function submitAdjustment(): Promise<void> {
 }
 
 .inventory__slot-product {
-  color: #cbd5f5;
-  font-size: 0.85rem;
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
 }
 
 .inventory__slot-quantity {
-  justify-self: end;
-  font-size: 0.85rem;
+  margin-left: 1rem;
+  white-space: nowrap;
 }
 
 .inventory__slot-status {
