@@ -15,6 +15,14 @@
         <header>
           <h2>Coin Inventory</h2>
           <p class="admin-dashboard__section-subtitle">Monitor change availability per denomination.</p>
+          <button
+            class="coin-refresh"
+            type="button"
+            @click="refreshCoinInventory"
+            :disabled="coinLoading || coinRefreshing || adjustmentSubmitting"
+          >
+            {{ coinRefreshing ? 'Refreshing...' : 'Refresh' }}
+          </button>
         </header>
 
         <div v-if="coinLoading" class="admin-dashboard__card admin-dashboard__card--loading">
@@ -140,6 +148,7 @@ const adminEmail = computed(() => authStore.user?.email ?? 'admin')
 
 const coinInventory = ref<CoinInventoryResponse | null>(null)
 const coinLoading = ref(true)
+const coinRefreshing = ref(false)
 const coinError = ref<string | null>(null)
 
 const coinBalances = computed(() => coinInventory.value?.balances ?? [])
@@ -219,6 +228,7 @@ async function loadCoinInventory(options: { withSpinner?: boolean } = {}): Promi
     coinError.value = error instanceof Error ? error.message : 'Unable to load coin inventory.'
   } finally {
     coinLoading.value = false
+    coinRefreshing.value = false
   }
 }
 
@@ -284,6 +294,15 @@ async function submitCoinAdjustment(): Promise<void> {
   } finally {
     adjustmentSubmitting.value = false
   }
+}
+
+async function refreshCoinInventory(): Promise<void> {
+  if (coinRefreshing.value || coinLoading.value) {
+    return
+  }
+
+  coinRefreshing.value = true
+  await loadCoinInventory({ withSpinner: false })
 }
 
 function formatCoin(value: number): string {
@@ -353,6 +372,13 @@ function formatCoin(value: number): string {
   color: #cbd5f5;
 }
 
+.admin-dashboard__section header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .admin-dashboard__card {
   background: rgba(12, 20, 35, 0.95);
   border-radius: 18px;
@@ -409,6 +435,28 @@ function formatCoin(value: number): string {
 
 .coin-table__alert {
   color: #fbbf24;
+}
+
+.coin-refresh {
+  margin-left: auto;
+  padding: 0.4rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(96, 165, 250, 0.18);
+  color: #e2e8f0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.coin-refresh:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.coin-refresh:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .coin-adjustment {
