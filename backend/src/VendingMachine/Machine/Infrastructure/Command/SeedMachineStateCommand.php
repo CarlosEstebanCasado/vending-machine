@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Machine\Infrastructure\Command;
 
+use App\AdminPanel\User\Infrastructure\Mongo\Document\AdminUserDocument;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinDenomination;
 use App\VendingMachine\Inventory\Domain\ValueObject\SlotStatus;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
@@ -17,6 +18,8 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+
+use function password_hash;
 
 #[AsCommand(name: 'app:seed-machine-state', description: 'Seed initial vending machine projections in MongoDB')]
 final class SeedMachineStateCommand extends Command
@@ -42,6 +45,7 @@ final class SeedMachineStateCommand extends Command
 
         $this->seedSlots();
         $this->seedCoinInventory();
+        $this->seedAdminUser();
 
         $this->documentManager->flush();
 
@@ -67,6 +71,12 @@ final class SeedMachineStateCommand extends Command
         $this->documentManager->createQueryBuilder(ActiveSessionDocument::class)
             ->remove()
             ->field('_id')->equals($this->machineId)
+            ->getQuery()
+            ->execute();
+
+        $this->documentManager->createQueryBuilder(AdminUserDocument::class)
+            ->remove()
+            ->field('email')->equals('admin@vendingmachine.test')
             ->getQuery()
             ->execute();
     }
@@ -205,6 +215,18 @@ final class SeedMachineStateCommand extends Command
         );
 
         $this->documentManager->persist($coins);
+    }
+
+    private function seedAdminUser(): void
+    {
+        $adminUser = new AdminUserDocument(
+            email: 'admin@vendingmachine.test',
+            passwordHash: password_hash('admin-password', PASSWORD_BCRYPT),
+            roles: ['admin'],
+            active: true,
+        );
+
+        $this->documentManager->persist($adminUser);
     }
 
     private function productId(string $key): string

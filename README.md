@@ -10,6 +10,11 @@ Full vending machine simulation: customer purchases and administrative managemen
    cd vending-machine
    cp .env.dist .env
    ```
+   Generate admin JWT secrets (optional but recommended):
+   ```bash
+   ./scripts/setup-admin-jwt.sh
+   ```
+   You can pass a different env file (e.g. `.env.dist`) as the first argument if needed.
 2. Add the local domain entry (run with elevated permissions):
    - macOS/Linux:
      ```bash
@@ -34,6 +39,8 @@ Full vending machine simulation: customer purchases and administrative managemen
 6. Access the services:
    - SPA: http://vendingmachine.test
    - API: http://vendingmachine.test/api/ping
+   - Admin login endpoint: POST http://vendingmachine.test/api/admin/login
+     - Default credentials (seed data): `admin@vendingmachine.test` / `admin-password`
 
 7. Stop the stack:
    ```bash
@@ -83,6 +90,7 @@ Full vending machine simulation: customer purchases and administrative managemen
 - Log security-sensitive events (admin logins, configuration changes) with traceability and basic alerting.
 - Handle backend/Mongo outages gracefully (timeouts, controlled retries, clear frontend messaging).
 - Configure automatic expiration of vending sessions and ensure coin returns on errors.
+- Admin API tokens use HMAC-signed JWTs (HS256). Configure `ADMIN_JWT_SECRET`, `ADMIN_JWT_TTL`, and optionally `ADMIN_JWT_ISSUER` in your environment.
 
 ## Internationalization
 - Prepare the frontend with i18n infrastructure (base translation files, currency/number helpers).

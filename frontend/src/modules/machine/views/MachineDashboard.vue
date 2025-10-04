@@ -2,6 +2,18 @@
   <main class="machine-layout">
     <div class="machine-wrapper">
       <section class="catalog-panel">
+        <div class="admin-access">
+          <button
+            class="admin-access__button"
+            type="button"
+            :aria-label="isAdminAuthenticated ? 'Open admin dashboard' : 'Admin login'"
+            @click="goToAdmin"
+          >
+            <span class="admin-access__icon" aria-hidden="true">🔑</span>
+            <span class="admin-access__label">Admin</span>
+          </button>
+        </div>
+
         <MachineHeader
           :machine-id="machineState?.machineId ?? '—'"
           :timestamp="formattedTimestamp"
@@ -65,11 +77,13 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { computed, defineComponent } from 'vue'
+import { useRouter } from 'vue-router'
 import MachineHeader from '@/modules/machine/components/MachineHeader.vue'
 import MachineProductGrid from '@/modules/machine/components/MachineProductGrid.vue'
 import MachineControlPanel from '@/modules/machine/components/MachineControlPanel.vue'
 import { useMachineDashboardState } from '@/modules/machine/views/useMachineDashboardState'
+import { useAdminAuthStore } from '@/modules/admin/store/useAdminAuthStore'
 
 export default defineComponent({
   name: 'MachineDashboard',
@@ -79,7 +93,27 @@ export default defineComponent({
     MachineControlPanel,
   },
   setup() {
-    return useMachineDashboardState()
+    const state = useMachineDashboardState()
+    const router = useRouter()
+    const adminAuthStore = useAdminAuthStore()
+
+    adminAuthStore.initializeFromStorage()
+
+    const isAdminAuthenticated = computed(() => adminAuthStore.isAuthenticated)
+
+    const goToAdmin = () => {
+      if (adminAuthStore.isAuthenticated) {
+        void router.push({ name: 'admin.dashboard' })
+      } else {
+        void router.push({ name: 'admin.login', query: { redirect: '/admin/dashboard' } })
+      }
+    }
+
+    return {
+      ...state,
+      goToAdmin,
+      isAdminAuthenticated,
+    }
   },
 })
 </script>
@@ -111,6 +145,40 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
+}
+
+.admin-access {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.admin-access__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  background: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.admin-access__button:hover {
+  transform: translateY(-1px);
+  background: rgba(37, 99, 235, 0.14);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.25);
+}
+
+.admin-access__icon {
+  font-size: 1.1rem;
+}
+
+.admin-access__label {
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
 }
 
 .dispense-tray {
