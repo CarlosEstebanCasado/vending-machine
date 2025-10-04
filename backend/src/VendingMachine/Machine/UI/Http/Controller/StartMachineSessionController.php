@@ -6,6 +6,7 @@ namespace App\VendingMachine\Machine\UI\Http\Controller;
 
 use App\VendingMachine\Session\Application\StartSession\StartSessionCommand;
 use App\VendingMachine\Session\Application\StartSession\StartSessionCommandHandler;
+use App\VendingMachine\Session\Application\StartSession\StartSessionResult;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,7 +26,12 @@ final class StartMachineSessionController extends AbstractController
     {
         $result = $this->handler->handle(new StartSessionCommand($this->machineId));
 
-        return new JsonResponse([
+        return new JsonResponse($this->sessionResponse($result), Response::HTTP_CREATED);
+    }
+
+    private function sessionResponse(StartSessionResult $result): array
+    {
+        return [
             'machine_id' => $this->machineId,
             'session' => [
                 'id' => $result->sessionId,
@@ -35,6 +41,6 @@ final class StartMachineSessionController extends AbstractController
                 'selected_product_id' => $result->selectedProductId,
                 'selected_slot_code' => $result->selectedSlotCode,
             ],
-        ], Response::HTTP_CREATED);
+        ];
     }
 }

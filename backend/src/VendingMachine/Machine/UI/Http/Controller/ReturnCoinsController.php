@@ -6,6 +6,8 @@ namespace App\VendingMachine\Machine\UI\Http\Controller;
 
 use App\VendingMachine\Session\Application\ReturnCoins\ReturnCoinsCommand;
 use App\VendingMachine\Session\Application\ReturnCoins\ReturnCoinsCommandHandler;
+use App\VendingMachine\Session\Application\ReturnCoins\ReturnCoinsResult;
+use JsonException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,15 +28,45 @@ final class ReturnCoinsController extends AbstractController
     public function __invoke(Request $request): JsonResponse
     {
         $payload = $this->decodeRequest($request);
+        $result = $this->handler->handle($this->createCommand($payload));
 
-        $result = $this->handler->handle(
-            new ReturnCoinsCommand(
-                machineId: $this->machineId,
-                sessionId: $payload['session_id'],
-            )
+        return new JsonResponse($this->responsePayload($result), Response::HTTP_OK);
+    }
+
+    /**
+     * @return array{session_id: string}
+     */
+    private function decodeRequest(Request $request): array
+    {
+        try {
+            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new BadRequestHttpException('Invalid JSON payload.');
+        }
+
+        if (!isset($data['session_id']) || !is_string($data['session_id'])) {
+            throw new BadRequestHttpException('Missing or invalid "session_id".');
+        }
+
+        return [
+            'session_id' => $data['session_id'],
+        ];
+    }
+
+    /**
+     * @param array{session_id: string} $payload
+     */
+    private function createCommand(array $payload): ReturnCoinsCommand
+    {
+        return new ReturnCoinsCommand(
+            machineId: $this->machineId,
+            sessionId: $payload['session_id'],
         );
+    }
 
-        return new JsonResponse([
+    private function responsePayload(ReturnCoinsResult $result): array
+    {
+        return [
             'machine_id' => $this->machineId,
             'session' => [
                 'id' => $result->sessionId,
@@ -45,22 +77,6 @@ final class ReturnCoinsController extends AbstractController
                 'selected_slot_code' => $result->selectedSlotCode,
             ],
             'returned_coins' => $result->returnedCoins,
-        ], Response::HTTP_OK);
-    }
-
-    /**
-     * @return array{session_id: string}
-     */
-    private function decodeRequest(Request $request): array
-    {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-
-        if (!isset($data['session_id']) || !is_string($data['session_id'])) {
-            throw new BadRequestHttpException('Missing or invalid "session_id".');
-        }
-
-        return [
-            'session_id' => $data['session_id'],
         ];
     }
 }

@@ -6,6 +6,8 @@ namespace App\VendingMachine\Machine\UI\Http\Controller;
 
 use App\VendingMachine\Session\Application\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Session\Application\InsertCoin\InsertCoinCommandHandler;
+use App\VendingMachine\Session\Application\StartSession\StartSessionResult;
+use JsonException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,26 +28,9 @@ final class InsertCoinController extends AbstractController
     public function __invoke(Request $request): JsonResponse
     {
         $payload = $this->decodeRequest($request);
+        $result = $this->handler->handle($this->createCommand($payload));
 
-        $result = $this->handler->handle(
-            new InsertCoinCommand(
-                machineId: $this->machineId,
-                sessionId: $payload['session_id'],
-                denomination: $payload['denomination_cents'],
-            )
-        );
-
-        return new JsonResponse([
-            'machine_id' => $this->machineId,
-            'session' => [
-                'id' => $result->sessionId,
-                'state' => $result->state,
-                'balance_cents' => $result->balanceCents,
-                'inserted_coins' => $result->insertedCoins,
-                'selected_product_id' => $result->selectedProductId,
-                'selected_slot_code' => $result->selectedSlotCode,
-            ],
-        ], Response::HTTP_OK);
+        return new JsonResponse($this->sessionResponse($result), Response::HTTP_OK);
     }
 
     /**
@@ -53,7 +38,11 @@ final class InsertCoinController extends AbstractController
      */
     private function decodeRequest(Request $request): array
     {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        try {
+            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new BadRequestHttpException('Invalid JSON payload.');
+        }
 
         if (!isset($data['session_id']) || !is_string($data['session_id'])) {
             throw new BadRequestHttpException('Missing or invalid "session_id".');
@@ -66,6 +55,33 @@ final class InsertCoinController extends AbstractController
         return [
             'session_id' => $data['session_id'],
             'denomination_cents' => $data['denomination_cents'],
+        ];
+    }
+
+    /**
+     * @param array{session_id: string, denomination_cents: int} $payload
+     */
+    private function createCommand(array $payload): InsertCoinCommand
+    {
+        return new InsertCoinCommand(
+            machineId: $this->machineId,
+            sessionId: $payload['session_id'],
+            denomination: $payload['denomination_cents'],
+        );
+    }
+
+    private function sessionResponse(StartSessionResult $result): array
+    {
+        return [
+            'machine_id' => $this->machineId,
+            'session' => [
+                'id' => $result->sessionId,
+                'state' => $result->state,
+                'balance_cents' => $result->balanceCents,
+                'inserted_coins' => $result->insertedCoins,
+                'selected_product_id' => $result->selectedProductId,
+                'selected_slot_code' => $result->selectedSlotCode,
+            ],
         ];
     }
 }

@@ -6,6 +6,8 @@ namespace App\VendingMachine\Machine\UI\Http\Controller;
 
 use App\VendingMachine\Session\Application\VendProduct\VendProductCommand;
 use App\VendingMachine\Session\Application\VendProduct\VendProductCommandHandler;
+use App\VendingMachine\Session\Application\VendProduct\VendProductResult;
+use JsonException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,17 +28,47 @@ final class VendProductController extends AbstractController
     public function __invoke(Request $request): JsonResponse
     {
         $payload = $this->decodeRequest($request);
+        $result = $this->handler->handle($this->createCommand($payload));
 
-        $result = $this->handler->handle(
-            new VendProductCommand(
-                machineId: $this->machineId,
-                sessionId: $payload['session_id'],
-            )
+        return new JsonResponse($this->responsePayload($result), Response::HTTP_OK);
+    }
+
+    /**
+     * @return array{session_id: string}
+     */
+    private function decodeRequest(Request $request): array
+    {
+        try {
+            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new BadRequestHttpException('Invalid JSON payload.');
+        }
+
+        if (!isset($data['session_id']) || !is_string($data['session_id'])) {
+            throw new BadRequestHttpException('Missing or invalid "session_id".');
+        }
+
+        return [
+            'session_id' => $data['session_id'],
+        ];
+    }
+
+    /**
+     * @param array{session_id: string} $payload
+     */
+    private function createCommand(array $payload): VendProductCommand
+    {
+        return new VendProductCommand(
+            machineId: $this->machineId,
+            sessionId: $payload['session_id'],
         );
+    }
 
+    private function responsePayload(VendProductResult $result): array
+    {
         $session = $result->session;
 
-        return new JsonResponse([
+        return [
             'machine_id' => $this->machineId,
             'session' => [
                 'id' => $session->sessionId,
@@ -54,22 +86,6 @@ final class VendProductController extends AbstractController
                 'change_dispensed' => $result->changeDispensed,
                 'returned_coins' => $result->returnedCoins,
             ],
-        ], Response::HTTP_OK);
-    }
-
-    /**
-     * @return array{session_id: string}
-     */
-    private function decodeRequest(Request $request): array
-    {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-
-        if (!isset($data['session_id']) || !is_string($data['session_id'])) {
-            throw new BadRequestHttpException('Missing or invalid "session_id".');
-        }
-
-        return [
-            'session_id' => $data['session_id'],
         ];
     }
 }

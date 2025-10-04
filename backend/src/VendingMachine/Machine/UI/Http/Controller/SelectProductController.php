@@ -6,6 +6,8 @@ namespace App\VendingMachine\Machine\UI\Http\Controller;
 
 use App\VendingMachine\Session\Application\SelectProduct\SelectProductCommand;
 use App\VendingMachine\Session\Application\SelectProduct\SelectProductCommandHandler;
+use App\VendingMachine\Session\Application\StartSession\StartSessionResult;
+use JsonException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,27 +28,9 @@ final class SelectProductController extends AbstractController
     public function __invoke(Request $request): JsonResponse
     {
         $payload = $this->decodeRequest($request);
+        $result = $this->handler->handle($this->createCommand($payload));
 
-        $result = $this->handler->handle(
-            new SelectProductCommand(
-                machineId: $this->machineId,
-                sessionId: $payload['session_id'],
-                productId: $payload['product_id'],
-                slotCode: $payload['slot_code'],
-            )
-        );
-
-        return new JsonResponse([
-            'machine_id' => $this->machineId,
-            'session' => [
-                'id' => $result->sessionId,
-                'state' => $result->state,
-                'balance_cents' => $result->balanceCents,
-                'inserted_coins' => $result->insertedCoins,
-                'selected_product_id' => $result->selectedProductId,
-                'selected_slot_code' => $result->selectedSlotCode,
-            ],
-        ], Response::HTTP_OK);
+        return new JsonResponse($this->sessionResponse($result), Response::HTTP_OK);
     }
 
     /**
@@ -54,7 +38,11 @@ final class SelectProductController extends AbstractController
      */
     private function decodeRequest(Request $request): array
     {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        try {
+            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new BadRequestHttpException('Invalid JSON payload.');
+        }
 
         if (!isset($data['session_id']) || !is_string($data['session_id'])) {
             throw new BadRequestHttpException('Missing or invalid "session_id".');
@@ -72,6 +60,34 @@ final class SelectProductController extends AbstractController
             'session_id' => $data['session_id'],
             'product_id' => $data['product_id'],
             'slot_code' => $data['slot_code'],
+        ];
+    }
+
+    /**
+     * @param array{session_id: string, product_id: string, slot_code: string} $payload
+     */
+    private function createCommand(array $payload): SelectProductCommand
+    {
+        return new SelectProductCommand(
+            machineId: $this->machineId,
+            sessionId: $payload['session_id'],
+            productId: $payload['product_id'],
+            slotCode: $payload['slot_code'],
+        );
+    }
+
+    private function sessionResponse(StartSessionResult $result): array
+    {
+        return [
+            'machine_id' => $this->machineId,
+            'session' => [
+                'id' => $result->sessionId,
+                'state' => $result->state,
+                'balance_cents' => $result->balanceCents,
+                'inserted_coins' => $result->insertedCoins,
+                'selected_product_id' => $result->selectedProductId,
+                'selected_slot_code' => $result->selectedSlotCode,
+            ],
         ];
     }
 }
