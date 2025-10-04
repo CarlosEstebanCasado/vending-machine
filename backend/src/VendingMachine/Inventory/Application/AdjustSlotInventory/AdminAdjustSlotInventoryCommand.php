@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\AdminPanel\Inventory\Application\AdjustSlotInventory;
+namespace App\VendingMachine\Inventory\Application\AdjustSlotInventory;
 
 final readonly class AdminAdjustSlotInventoryCommand
 {
