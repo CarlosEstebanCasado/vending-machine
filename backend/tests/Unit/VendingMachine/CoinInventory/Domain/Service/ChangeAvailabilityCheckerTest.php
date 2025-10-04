@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\CoinInventory\Domain\Service;
 
-use App\VendingMachine\CoinInventory\Domain\CoinInventory;
+use App\Tests\Unit\VendingMachine\CoinInventory\Domain\CoinInventoryMother;
 use App\VendingMachine\CoinInventory\Domain\Service\ChangeAvailabilityChecker;
-use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundle;
 use PHPUnit\Framework\TestCase;
 
 final class ChangeAvailabilityCheckerTest extends TestCase
@@ -20,38 +19,29 @@ final class ChangeAvailabilityCheckerTest extends TestCase
 
     public function testItReportsChangeAsSufficientWhenEnoughCoinsAreAvailable(): void
     {
-        $inventory = CoinInventory::restore(
-            CoinBundle::fromArray([
-                25 => 4,
-                10 => 5,
-                5 => 5,
-            ]),
-            CoinBundle::empty()
-        );
+        $inventory = CoinInventoryMother::withAvailable([
+            25 => 4,
+            10 => 5,
+            5 => 5,
+        ]);
 
         self::assertTrue($this->checker->isChangeSufficient($inventory));
     }
 
     public function testItReportsChangeAsInsufficientWhenNoChangeCoinsExist(): void
     {
-        $inventory = CoinInventory::restore(
-            CoinBundle::fromArray([
-                100 => 10,
-            ]),
-            CoinBundle::empty()
-        );
+        $inventory = CoinInventoryMother::withAvailable([
+            100 => 10,
+        ]);
 
         self::assertFalse($this->checker->isChangeSufficient($inventory));
     }
 
     public function testItReportsChangeAsInsufficientWhenExactAmountsCannotBeMade(): void
     {
-        $inventory = CoinInventory::restore(
-            CoinBundle::fromArray([
-                10 => 10,
-            ]),
-            CoinBundle::empty()
-        );
+        $inventory = CoinInventoryMother::withAvailable([
+            10 => 10,
+        ]);
 
         self::assertFalse($this->checker->isChangeSufficient($inventory));
     }
