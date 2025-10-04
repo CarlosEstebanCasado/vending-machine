@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\AdminPanel\Coin\UI\Http\Controller;
 
-use App\AdminPanel\Coin\Application\GetCoinInventory\AdminCoinInventoryResult;
-use App\AdminPanel\Coin\Application\GetCoinInventory\AdminGetCoinInventoryQuery;
-use App\AdminPanel\Coin\Application\GetCoinInventory\AdminGetCoinInventoryQueryHandler;
-use App\AdminPanel\Coin\Application\GetCoinInventory\CoinInventoryNotFound;
+use App\VendingMachine\CoinInventory\Application\GetInventory\CoinInventoryNotFound;
+use App\VendingMachine\CoinInventory\Application\GetInventory\CoinInventoryResult;
+use App\VendingMachine\CoinInventory\Application\GetInventory\GetCoinInventoryQuery;
+use App\VendingMachine\CoinInventory\Application\GetInventory\GetCoinInventoryQueryHandler;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -17,7 +17,7 @@ use Throwable;
 final class GetCoinInventoryController
 {
     public function __construct(
-        private readonly AdminGetCoinInventoryQueryHandler $handler,
+        private readonly GetCoinInventoryQueryHandler $handler,
         private readonly string $defaultMachineId,
     ) {
     }
@@ -34,7 +34,7 @@ final class GetCoinInventoryController
         }
 
         try {
-            $result = ($this->handler)(new AdminGetCoinInventoryQuery($machineId));
+            $result = ($this->handler)(new GetCoinInventoryQuery($machineId));
         } catch (CoinInventoryNotFound $exception) {
             return new JsonResponse(
                 ['error' => ['message' => $exception->getMessage()]],
@@ -53,7 +53,7 @@ final class GetCoinInventoryController
     /**
      * @return array<string, mixed>
      */
-    private function serializeResult(AdminCoinInventoryResult $result): array
+    private function serializeResult(CoinInventoryResult $result): array
     {
         return [
             'machineId' => $result->machineId,

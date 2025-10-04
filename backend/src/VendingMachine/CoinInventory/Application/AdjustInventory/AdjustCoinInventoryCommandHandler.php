@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\AdminPanel\Coin\Application\UpdateCoinInventory;
+namespace App\VendingMachine\CoinInventory\Application\AdjustInventory;
 
-use App\AdminPanel\Coin\Application\GetCoinInventory\CoinInventoryNotFound;
-use App\AdminPanel\Coin\Domain\CoinReserveRepository;
-use App\AdminPanel\Coin\Domain\CoinReserveSnapshot;
+use App\VendingMachine\CoinInventory\Application\GetInventory\CoinInventoryNotFound;
 use App\VendingMachine\CoinInventory\Domain\CoinInventory;
+use App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository;
+use App\VendingMachine\CoinInventory\Domain\CoinInventorySnapshot;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundle;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinDenomination;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
@@ -15,15 +15,15 @@ use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use InvalidArgumentException;
 
-final class AdminUpdateCoinInventoryCommandHandler
+final class AdjustCoinInventoryCommandHandler
 {
     public function __construct(
-        private readonly CoinReserveRepository $coinReserveRepository,
+        private readonly CoinInventoryRepository $coinInventoryRepository,
         private readonly DocumentManager $documentManager,
     ) {
     }
 
-    public function __invoke(AdminUpdateCoinInventoryCommand $command): void
+    public function __invoke(AdjustCoinInventoryCommand $command): void
     {
         $adjustmentBundle = $this->buildBundle($command->denominations);
 
@@ -36,22 +36,23 @@ final class AdminUpdateCoinInventoryCommandHandler
             throw new CoinInventoryNotFound(sprintf('Coin inventory not found for machine "%s".', $command->machineId));
         }
 
-        $reserveSnapshot = $this->coinReserveRepository->find($command->machineId)
-            ?? new CoinReserveSnapshot($command->machineId, [], new DateTimeImmutable());
+        $inventorySnapshot = $this->coinInventoryRepository->find($command->machineId)
+            ?? new CoinInventorySnapshot($command->machineId, [], [], new DateTimeImmutable());
 
-        $availableBundle = CoinBundle::fromArray($reserveSnapshot->balances);
-        $reservedBundle = CoinBundle::fromArray($projection->reserved());
+        $availableBundle = CoinBundle::fromArray($inventorySnapshot->available);
+        $reservedBundle = CoinBundle::fromArray($inventorySnapshot->reserved);
 
         $inventory = CoinInventory::restore($availableBundle, $reservedBundle);
 
         match ($command->operation) {
-            UpdateCoinInventoryOperation::Deposit => $inventory->deposit($adjustmentBundle),
-            UpdateCoinInventoryOperation::Withdraw => $this->withdraw($inventory, $adjustmentBundle),
+            AdjustCoinInventoryOperation::Deposit => $inventory->deposit($adjustmentBundle),
+            AdjustCoinInventoryOperation::Withdraw => $this->withdraw($inventory, $adjustmentBundle),
         };
 
-        $this->coinReserveRepository->save(new CoinReserveSnapshot(
+        $this->coinInventoryRepository->save(new CoinInventorySnapshot(
             machineId: $command->machineId,
-            balances: $inventory->availableCoins()->toArray(),
+            available: $inventory->availableCoins()->toArray(),
+            reserved: $inventory->reservedCoins()->toArray(),
             updatedAt: new DateTimeImmutable(),
         ));
 

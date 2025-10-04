@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\AdminPanel\Coin\Application\GetCoinInventory;
+namespace App\VendingMachine\CoinInventory\Application\GetInventory;
 
-final readonly class AdminGetCoinInventoryQuery
+final readonly class GetCoinInventoryQuery
 {
     public function __construct(
         public string $machineId,

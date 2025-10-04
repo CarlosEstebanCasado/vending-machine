@@ -42,7 +42,7 @@ services:
         bind:
             $defaultMachineId: '%app.machine_id%'
 
-    App\AdminPanel\Coin\Domain\CoinReserveRepository: '@App\AdminPanel\Coin\Infrastructure\Mongo\MongoCoinReserveRepository'
+    App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository: '@App\VendingMachine\CoinInventory\Infrastructure\Mongo\MongoCoinInventoryRepository'
 
     App\VendingMachine\Machine\Application\Service\MongoMachineStateProvider:
         arguments:

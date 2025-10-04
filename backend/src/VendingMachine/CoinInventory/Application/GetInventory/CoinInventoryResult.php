@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\AdminPanel\Coin\Application\GetCoinInventory;
+namespace App\VendingMachine\CoinInventory\Application\GetInventory;
 
-final readonly class AdminCoinInventoryResult
+final readonly class CoinInventoryResult
 {
     /**
      * @param array<int, array{denomination:int, available:int, reserved:int}> $balances

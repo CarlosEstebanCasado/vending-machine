@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\AdminPanel\Coin\Application\UpdateCoinInventory;
+namespace App\VendingMachine\CoinInventory\Application\AdjustInventory;
 
-final readonly class AdminUpdateCoinInventoryCommand
+final readonly class AdjustCoinInventoryCommand
 {
     /**
      * @param array<int, int> $denominations
      */
     public function __construct(
         public string $machineId,
-        public UpdateCoinInventoryOperation $operation,
+        public AdjustCoinInventoryOperation $operation,
         public array $denominations,
     ) {
     }

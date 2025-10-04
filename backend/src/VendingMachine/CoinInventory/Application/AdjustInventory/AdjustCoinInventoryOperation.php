@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\AdminPanel\Coin\Application\UpdateCoinInventory;
+namespace App\VendingMachine\CoinInventory\Application\AdjustInventory;
 
 use InvalidArgumentException;
 
-enum UpdateCoinInventoryOperation: string
+enum AdjustCoinInventoryOperation: string
 {
     case Deposit = 'deposit';
     case Withdraw = 'withdraw';

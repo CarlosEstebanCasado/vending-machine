@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\AdminPanel\Coin\Application\GetCoinInventory;
+namespace App\VendingMachine\CoinInventory\Application\GetInventory;
 
 use RuntimeException;
 

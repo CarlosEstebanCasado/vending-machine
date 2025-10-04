@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\AdminPanel\Coin\UI\Http\Controller;
 
-use App\AdminPanel\Coin\Application\UpdateCoinInventory\AdminUpdateCoinInventoryCommand;
-use App\AdminPanel\Coin\Application\UpdateCoinInventory\AdminUpdateCoinInventoryCommandHandler;
-use App\AdminPanel\Coin\Application\UpdateCoinInventory\UpdateCoinInventoryOperation;
+use App\VendingMachine\CoinInventory\Application\AdjustInventory\AdjustCoinInventoryCommand;
+use App\VendingMachine\CoinInventory\Application\AdjustInventory\AdjustCoinInventoryCommandHandler;
+use App\VendingMachine\CoinInventory\Application\AdjustInventory\AdjustCoinInventoryOperation;
 use InvalidArgumentException;
 use JsonException;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,7 +18,7 @@ use Throwable;
 final class UpdateCoinInventoryController
 {
     public function __construct(
-        private readonly AdminUpdateCoinInventoryCommandHandler $handler,
+        private readonly AdjustCoinInventoryCommandHandler $handler,
         private readonly string $defaultMachineId,
     ) {
     }
@@ -60,9 +60,9 @@ final class UpdateCoinInventoryController
         }
 
         try {
-            $command = new AdminUpdateCoinInventoryCommand(
+            $command = new AdjustCoinInventoryCommand(
                 machineId: $machineId,
-                operation: UpdateCoinInventoryOperation::fromString($operation),
+                operation: AdjustCoinInventoryOperation::fromString($operation),
                 denominations: $denominations,
             );
 
