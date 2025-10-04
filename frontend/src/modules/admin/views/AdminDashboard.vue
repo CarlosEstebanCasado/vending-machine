@@ -37,7 +37,7 @@ onMounted(() => {
 
 function handleLogout(): void {
   authStore.logout()
-  void router.replace({ name: 'admin.login' })
+  void router.replace({ name: 'machine.dashboard' })
 }
 </script>
 

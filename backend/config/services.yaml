@@ -32,6 +32,10 @@ services:
             $ttlInSeconds: '%env(int:ADMIN_JWT_TTL)%'
             $issuer: '%env(string:ADMIN_JWT_ISSUER)%'
 
+    App\AdminPanel\User\UI\Http\Controller\:
+        resource: '../src/AdminPanel/User/UI/Http/Controller/'
+        public: true
+
     App\VendingMachine\Machine\Application\Service\MongoMachineStateProvider:
         arguments:
             $machineId: '%app.machine_id%'

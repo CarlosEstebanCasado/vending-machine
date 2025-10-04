@@ -34,6 +34,9 @@
           <span v-if="loading">Signing in…</span>
           <span v-else>Sign in</span>
         </button>
+        <button class="admin-login__cancel" type="button" :disabled="loading" @click="handleCancel">
+          Cancel
+        </button>
       </form>
     </section>
   </main>
@@ -96,6 +99,10 @@ async function handleSubmit(): Promise<void> {
   } catch (error) {
     console.error('Failed to login as admin', error)
   }
+}
+
+function handleCancel(): void {
+  void router.replace({ name: 'machine.dashboard' })
 }
 </script>
 
@@ -194,6 +201,23 @@ async function handleSubmit(): Promise<void> {
 .admin-login__submit:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: 0 18px 28px rgba(37, 99, 235, 0.35);
+}
+
+.admin-login__cancel {
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: #cbd5f5;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.admin-login__cancel:hover {
+  border-color: rgba(96, 165, 250, 0.6);
+  color: #e0e7ff;
 }
 
 @media (max-width: 480px) {

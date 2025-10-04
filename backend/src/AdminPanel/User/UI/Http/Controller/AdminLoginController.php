@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
-#[Route(path: '/admin/login', name: 'admin_login', methods: ['POST'])]
+#[Route(path: '/login', name: 'admin_login', methods: ['POST'])]
 final class AdminLoginController
 {
     public function __construct(private readonly LoginAdminUserCommandHandler $handler)
