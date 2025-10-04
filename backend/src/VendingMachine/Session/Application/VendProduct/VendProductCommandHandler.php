@@ -6,6 +6,9 @@ namespace App\VendingMachine\Session\Application\VendProduct;
 
 use App\Shared\Money\Domain\Money;
 use App\VendingMachine\CoinInventory\Domain\CoinInventory;
+use App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository;
+use App\VendingMachine\CoinInventory\Domain\CoinInventorySnapshot;
+use App\VendingMachine\CoinInventory\Domain\Service\ChangeAvailabilityChecker;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundle;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
@@ -13,13 +16,17 @@ use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocum
 use App\VendingMachine\Product\Domain\ValueObject\ProductId;
 use App\VendingMachine\Session\Application\StartSession\StartSessionResult;
 use App\VendingMachine\Session\Domain\VendingSession;
+use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use DomainException;
 
 final class VendProductCommandHandler
 {
-    public function __construct(private readonly DocumentManager $documentManager)
-    {
+    public function __construct(
+        private readonly DocumentManager $documentManager,
+        private readonly CoinInventoryRepository $coinInventoryRepository,
+        private readonly ChangeAvailabilityChecker $changeAvailabilityChecker,
+    ) {
     }
 
     public function handle(VendProductCommand $command): VendProductResult
@@ -34,13 +41,12 @@ final class VendProductCommandHandler
         $priceCents = $this->requireProductPrice($slotDocument);
         $this->assertSufficientBalance($session, $priceCents);
 
-        $coinInventoryDocument = $this->loadCoinInventory($command->machineId);
+        [$baseInventory, $coinInventoryDocument, $snapshot] = $this->loadCoinInventory($command->machineId);
 
-        $available = CoinBundle::fromArray($coinInventoryDocument->available());
-        $reserved = CoinBundle::fromArray($coinInventoryDocument->reserved());
-        $baseInventory = CoinInventory::restore($available, $reserved);
-
-        $planningInventory = CoinInventory::restore($available, $reserved);
+        $planningInventory = CoinInventory::restore(
+            CoinBundle::fromArray($baseInventory->availableCoins()->toArray()),
+            CoinBundle::fromArray($baseInventory->reservedCoins()->toArray()),
+        );
         $planningInventory->deposit($session->insertedCoins());
 
         $changeAmount = $session->balance()->amountInCents() - $priceCents;
@@ -67,6 +73,7 @@ final class VendProductCommandHandler
             baseInventory: $baseInventory,
             coinInventoryDocument: $coinInventoryDocument,
             slotDocument: $slotDocument,
+            machineId: $command->machineId,
         );
     }
 
@@ -147,17 +154,33 @@ final class VendProductCommandHandler
         }
     }
 
-    private function loadCoinInventory(string $machineId): CoinInventoryProjectionDocument
+    /**
+     * @return array{0: CoinInventory, 1: CoinInventoryProjectionDocument, 2: CoinInventorySnapshot}
+     */
+    private function loadCoinInventory(string $machineId): array
     {
+        $snapshot = $this->coinInventoryRepository->find($machineId)
+            ?? new CoinInventorySnapshot($machineId, [], [], false, new DateTimeImmutable());
+
+        $available = CoinBundle::fromArray($snapshot->available);
+        $reserved = CoinBundle::fromArray($snapshot->reserved);
+        $inventory = CoinInventory::restore($available, $reserved);
+
         /** @var CoinInventoryProjectionDocument|null $coinInventoryDocument */
         $coinInventoryDocument = $this->documentManager->find(CoinInventoryProjectionDocument::class, $machineId);
 
         if (null === $coinInventoryDocument) {
-            $coinInventoryDocument = new CoinInventoryProjectionDocument($machineId, [], [], false);
+            $coinInventoryDocument = new CoinInventoryProjectionDocument(
+                machineId: $machineId,
+                available: $snapshot->available,
+                reserved: $snapshot->reserved,
+                insufficientChange: $snapshot->insufficientChange,
+                updatedAt: $snapshot->updatedAt,
+            );
             $this->documentManager->persist($coinInventoryDocument);
         }
 
-        return $coinInventoryDocument;
+        return [$inventory, $coinInventoryDocument, $snapshot];
     }
 
     private function planChangeBundle(CoinInventory $planningInventory, int $changeAmount): CoinBundle
@@ -203,6 +226,7 @@ final class VendProductCommandHandler
         CoinInventory $baseInventory,
         CoinInventoryProjectionDocument $coinInventoryDocument,
         SlotProjectionDocument $slotDocument,
+        string $machineId,
     ): VendProductResult {
         $baseInventory->deposit($session->insertedCoins());
 
@@ -220,7 +244,18 @@ final class VendProductCommandHandler
         $sessionSnapshot = $this->createSessionSnapshot($session);
 
         $sessionDocument->clearSession();
-        $coinInventoryDocument->applyInventory($baseInventory, false);
+
+        $insufficientChange = !$this->changeAvailabilityChecker->isChangeSufficient($baseInventory);
+
+        $this->coinInventoryRepository->save(new CoinInventorySnapshot(
+            machineId: $machineId,
+            available: $baseInventory->availableCoins()->toArray(),
+            reserved: $baseInventory->reservedCoins()->toArray(),
+            insufficientChange: $insufficientChange,
+            updatedAt: new DateTimeImmutable(),
+        ));
+
+        $coinInventoryDocument->applyInventory($baseInventory, $insufficientChange);
 
         $this->documentManager->flush();
 

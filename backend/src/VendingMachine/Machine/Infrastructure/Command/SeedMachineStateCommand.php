@@ -6,6 +6,7 @@ namespace App\VendingMachine\Machine\Infrastructure\Command;
 
 use App\AdminPanel\User\Infrastructure\Mongo\Document\AdminUserDocument;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinDenomination;
+use App\VendingMachine\CoinInventory\Infrastructure\Mongo\Document\CoinInventoryDocument;
 use App\VendingMachine\Inventory\Domain\ValueObject\SlotStatus;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
@@ -201,20 +202,34 @@ final class SeedMachineStateCommand extends Command
 
     private function seedCoinInventory(): void
     {
+        $available = [
+            CoinDenomination::OneDollar->value => 5,
+            CoinDenomination::TwentyFiveCents->value => 20,
+            CoinDenomination::TenCents->value => 15,
+            CoinDenomination::FiveCents->value => 10,
+        ];
+
+        $snapshotUpdatedAt = new DateTimeImmutable();
+
         $coins = new CoinInventoryProjectionDocument(
             machineId: $this->machineId,
-            available: [
-                CoinDenomination::OneDollar->value => 5,
-                CoinDenomination::TwentyFiveCents->value => 20,
-                CoinDenomination::TenCents->value => 15,
-                CoinDenomination::FiveCents->value => 10,
-            ],
+            available: $available,
             reserved: [],
             insufficientChange: false,
-            updatedAt: new DateTimeImmutable(),
+            updatedAt: $snapshotUpdatedAt,
         );
 
         $this->documentManager->persist($coins);
+
+        $inventoryDocument = new CoinInventoryDocument(
+            machineId: $this->machineId,
+            available: $available,
+            reserved: [],
+            insufficientChange: false,
+            updatedAt: $snapshotUpdatedAt,
+        );
+
+        $this->documentManager->persist($inventoryDocument);
     }
 
     private function seedAdminUser(): void

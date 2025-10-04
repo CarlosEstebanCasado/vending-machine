@@ -76,16 +76,16 @@ Full vending machine simulation: customer purchases and administrative managemen
 - `Money` and derivatives (`Coin`, `MoneyBalance`, `CoinBundle`): value objects representing accepted denominations and safe arithmetic.
 - `Inventory`/`Slot`: binds products to physical compartments, tracking max capacity and current quantity. The `restock_threshold` marks the quantity at which the slot should be considered low on product so operations can schedule a replenishment before it runs out.
 - `CoinInventory`: aggregate that maintains per-denomination counts and change-dispense/restock rules.
+  - The admin dashboard shows `insufficient change` when the backend cannot compose every multiple of 5 cts up to 95 cts (or the highest amount afforded by the available change coins). The heuristic rebuilds the change plan after each vend or manual adjustment so the flag always reflects the latest inventory snapshot.
 - `VendingSession`: tracks the ongoing interaction (inserted coins, selected product, transactional state); persisted from the first user action, closed with `completed`, `cancelled`, or `timeout`, linked to the resulting `Transaction`, and purged only through retention policies.
 - `Transaction`: aggregate for completed operations (sales, refunds, admin adjustments) with audit metadata.
 - `AdminUser`: aggregate for authenticated console accounts with credentials, permissions, and active token/session linkage.
 - `MachineState`: projection summarizing global machine status (stock, change, operational flags) for quick reads.
 - `MaintenanceLog`: record of service interventions, notes, and manual reconciliations.
-- `AuthToken`/`RefreshToken`: models managing authentication lifecycle and revocation.
 - Adapters/DTOs (MongoDB document mappers, API payloads, event payloads) bridging the domain with infrastructure.
 
 ## Security & Resilience
-- Centralize secrets in environment variables (backed by `.env.dist`) and define JWT/refresh key rotation.
+- Centralize secrets in environment variables (backed by `.env.dist`).
 - Enforce rate limiting, input validation, and strict CORS policies on public API endpoints.
 - Log security-sensitive events (admin logins, configuration changes) with traceability and basic alerting.
 - Handle backend/Mongo outages gracefully (timeouts, controlled retries, clear frontend messaging).
@@ -164,16 +164,6 @@ All monetary amounts are stored in cents (`int32`) to avoid precision issues.
 - `last_login_at` (`Date|null`)
 - `created_at` / `updated_at` (`Date`)
 - Indexes: `{ email: 1 }` unique, `{ status: 1 }`
-
-### Collection: `auth_tokens`
-- `_id` (`ObjectId`)
-- `admin_user_id` (`ObjectId`)
-- `token_hash` (`string`)
-- `type` (`string`) — `access`, `refresh`
-- `issued_at` (`Date`)
-- `expires_at` (`Date`)
-- `revoked_at` (`Date|null`)
-- Indexes: `{ admin_user_id: 1 }`, `{ token_hash: 1 }` unique, `{ expires_at: 1 }`
 
 ### Collection: `maintenance_logs`
 - `_id` (`ObjectId`)

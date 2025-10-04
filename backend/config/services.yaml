@@ -36,6 +36,16 @@ services:
         resource: '../src/AdminPanel/User/UI/Http/Controller/'
         public: true
 
+    App\AdminPanel\Coin\UI\Http\Controller\:
+        resource: '../src/AdminPanel/Coin/UI/Http/Controller/'
+        public: true
+        bind:
+            $defaultMachineId: '%app.machine_id%'
+
+    App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository: '@App\VendingMachine\CoinInventory\Infrastructure\Mongo\MongoCoinInventoryRepository'
+
+    App\VendingMachine\CoinInventory\Domain\Service\ChangeAvailabilityChecker: ~
+
     App\VendingMachine\Machine\Application\Service\MongoMachineStateProvider:
         arguments:
             $machineId: '%app.machine_id%'

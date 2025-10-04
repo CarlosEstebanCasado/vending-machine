@@ -49,6 +49,15 @@ final class CoinInventory
         $this->available = $this->available->add($bundle);
     }
 
+    public function withdraw(CoinBundle $bundle): void
+    {
+        if (!$this->available->includesAtLeast($bundle)) {
+            throw new DomainException('Not enough coins available to withdraw the requested bundle.');
+        }
+
+        $this->available = $this->available->subtract($bundle);
+    }
+
     public function reserveChange(CoinBundle $bundle): void
     {
         $bundle->assertContainsOnlyChangeCoins();

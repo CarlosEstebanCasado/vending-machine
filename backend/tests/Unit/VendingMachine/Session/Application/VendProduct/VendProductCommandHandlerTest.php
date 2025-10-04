@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Session\Application\VendProduct;
 
+use App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository;
+use App\VendingMachine\CoinInventory\Domain\CoinInventorySnapshot;
+use App\VendingMachine\CoinInventory\Domain\Service\ChangeAvailabilityChecker;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
 use App\VendingMachine\Session\Application\VendProduct\VendProductCommand;
 use App\VendingMachine\Session\Application\VendProduct\VendProductCommandHandler;
 use App\VendingMachine\Session\Domain\ValueObject\VendingSessionState;
+use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ODM\MongoDB\Repository\DocumentRepository;
 use DomainException;
@@ -59,6 +63,25 @@ final class VendProductCommandHandlerTest extends TestCase
             ])
             ->willReturn($slotDocument);
 
+        $coinInventoryRepository = $this->createMock(CoinInventoryRepository::class);
+        $coinInventoryRepository->expects(self::once())
+            ->method('find')
+            ->with('machine-1')
+            ->willReturn(new CoinInventorySnapshot('machine-1', [25 => 2, 10 => 5, 5 => 5], [], false, new DateTimeImmutable('-1 minute')));
+        $coinInventoryRepository->expects(self::once())
+            ->method('save')
+            ->with(self::callback(static function (CoinInventorySnapshot $snapshot): bool {
+                $available = $snapshot->available;
+
+                return 'machine-1' === $snapshot->machineId
+                    && 1 === $available[100]
+                    && 2 === $available[25]
+                    && 5 === $available[10]
+                    && 5 === $available[5]
+                    && [] === $snapshot->reserved
+                    && false === $snapshot->insufficientChange;
+            }));
+
         $documentManager = $this->createMock(DocumentManager::class);
         $documentManager->expects(self::exactly(2))
             ->method('find')
@@ -75,7 +98,7 @@ final class VendProductCommandHandlerTest extends TestCase
         $documentManager->expects(self::once())
             ->method('flush');
 
-        $handler = new VendProductCommandHandler($documentManager);
+        $handler = new VendProductCommandHandler($documentManager, $coinInventoryRepository, new ChangeAvailabilityChecker());
 
         $result = $handler->handle(new VendProductCommand('machine-1', 'session-1'));
 
@@ -143,6 +166,14 @@ final class VendProductCommandHandlerTest extends TestCase
             ->method('findOneBy')
             ->willReturn($slotDocument);
 
+        $coinInventoryRepository = $this->createMock(CoinInventoryRepository::class);
+        $coinInventoryRepository->expects(self::once())
+            ->method('find')
+            ->with('machine-1')
+            ->willReturn(new CoinInventorySnapshot('machine-1', [10 => 1, 5 => 1], [], false, new DateTimeImmutable('-1 minute')));
+        $coinInventoryRepository->expects(self::never())
+            ->method('save');
+
         $documentManager = $this->createMock(DocumentManager::class);
         $documentManager->expects(self::exactly(2))
             ->method('find')
@@ -156,7 +187,7 @@ final class VendProductCommandHandlerTest extends TestCase
         $documentManager->expects(self::once())
             ->method('flush');
 
-        $handler = new VendProductCommandHandler($documentManager);
+        $handler = new VendProductCommandHandler($documentManager, $coinInventoryRepository, new ChangeAvailabilityChecker());
 
         $result = $handler->handle(new VendProductCommand('machine-1', 'session-1'));
 
@@ -203,6 +234,12 @@ final class VendProductCommandHandlerTest extends TestCase
             ->method('findOneBy')
             ->willReturn($slotDocument);
 
+        $coinInventoryRepository = $this->createMock(CoinInventoryRepository::class);
+        $coinInventoryRepository->expects(self::never())
+            ->method('find');
+        $coinInventoryRepository->expects(self::never())
+            ->method('save');
+
         $documentManager = $this->createMock(DocumentManager::class);
         $documentManager->expects(self::once())
             ->method('find')
@@ -212,7 +249,7 @@ final class VendProductCommandHandlerTest extends TestCase
             ->method('getRepository')
             ->willReturn($repository);
 
-        $handler = new VendProductCommandHandler($documentManager);
+        $handler = new VendProductCommandHandler($documentManager, $coinInventoryRepository, new ChangeAvailabilityChecker());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Insufficient balance for selected product.');
