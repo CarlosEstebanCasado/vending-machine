@@ -66,7 +66,7 @@ final class UpdateCoinInventoryController
                 denominations: $denominations,
             );
 
-            ($this->handler)($command);
+            $this->handler->handle($command);
         } catch (InvalidArgumentException $exception) {
             return new JsonResponse(
                 ['error' => ['message' => $exception->getMessage()]],

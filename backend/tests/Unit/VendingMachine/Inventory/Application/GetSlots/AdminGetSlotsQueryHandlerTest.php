@@ -61,7 +61,7 @@ final class AdminGetSlotsQueryHandlerTest extends TestCase
 
         $handler = new AdminGetSlotsQueryHandler($slotRepository, $productRepository);
 
-        $result = $handler(new AdminGetSlotsQuery('machine-1'));
+        $result = $handler->handle(new AdminGetSlotsQuery('machine-1'));
 
         self::assertInstanceOf(AdminSlotsInventoryResult::class, $result);
         self::assertSame('machine-1', $result->machineId);

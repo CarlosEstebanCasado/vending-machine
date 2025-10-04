@@ -29,7 +29,7 @@ final class GetSlotInventoryController
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        $result = ($this->handler)(new AdminGetSlotsQuery($machineId));
+        $result = $this->handler->handle(new AdminGetSlotsQuery($machineId));
 
         return new JsonResponse($this->serializeResult($result));
     }

@@ -23,7 +23,7 @@ final class AdminAdjustSlotInventoryCommandHandler
     ) {
     }
 
-    public function __invoke(AdminAdjustSlotInventoryCommand $command): void
+    public function handle(AdminAdjustSlotInventoryCommand $command): void
     {
         if ($command->quantity <= 0) {
             throw new InvalidArgumentException('Quantity must be greater than zero.');

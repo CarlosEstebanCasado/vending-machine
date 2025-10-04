@@ -72,7 +72,7 @@ final class AdjustSlotInventoryController
                 productId: is_string($productId) ? $productId : null,
             );
 
-            ($this->handler)($command);
+            $this->handler->handle($command);
         } catch (InvalidArgumentException $exception) {
             return new JsonResponse([
                 'error' => ['message' => $exception->getMessage()]], JsonResponse::HTTP_BAD_REQUEST);

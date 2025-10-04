@@ -25,7 +25,7 @@ final class AdjustCoinInventoryCommandHandler
     ) {
     }
 
-    public function __invoke(AdjustCoinInventoryCommand $command): void
+    public function handle(AdjustCoinInventoryCommand $command): void
     {
         $adjustmentBundle = $this->buildBundle($command->denominations);
 

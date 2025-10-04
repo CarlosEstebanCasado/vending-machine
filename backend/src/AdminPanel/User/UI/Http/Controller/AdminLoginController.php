@@ -43,7 +43,7 @@ final class AdminLoginController
         }
 
         try {
-            $result = ($this->handler)(new LoginAdminUserCommand($email, $password));
+            $result = $this->handler->handle(new LoginAdminUserCommand($email, $password));
         } catch (AdminUserNotFound|AdminUserInvalidCredentials $exception) {
             return new JsonResponse(
                 ['error' => ['message' => 'Invalid credentials.']],

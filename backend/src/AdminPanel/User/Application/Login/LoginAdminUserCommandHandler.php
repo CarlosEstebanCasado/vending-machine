@@ -21,7 +21,7 @@ final class LoginAdminUserCommandHandler
     ) {
     }
 
-    public function __invoke(LoginAdminUserCommand $command): LoginAdminUserResult
+    public function handle(LoginAdminUserCommand $command): LoginAdminUserResult
     {
         $adminUser = $this->repository->findByEmail(strtolower($command->email));
 

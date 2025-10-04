@@ -16,7 +16,7 @@ final class AdminGetSlotsQueryHandler
     ) {
     }
 
-    public function __invoke(AdminGetSlotsQuery $query): AdminSlotsInventoryResult
+    public function handle(AdminGetSlotsQuery $query): AdminSlotsInventoryResult
     {
         $slots = $this->slotRepository->findByMachine($query->machineId);
         $productMap = $this->buildProductMap();
