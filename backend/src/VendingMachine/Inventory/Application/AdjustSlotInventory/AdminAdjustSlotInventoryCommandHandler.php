@@ -25,74 +25,116 @@ final class AdminAdjustSlotInventoryCommandHandler
 
     public function handle(AdminAdjustSlotInventoryCommand $command): void
     {
+        $this->assertQuantityPositive($command);
+
+        $slot = $this->findSlot($command->machineId, $command->slotCode);
+        $this->assertSlotIsAdjustable($slot, $command->operation);
+
+        $product = AdjustSlotInventoryOperation::Restock === $command->operation
+            ? $this->restockSlot($slot, $command)
+            : $this->withdrawFromSlot($slot, $command->quantity);
+
+        $product ??= $this->resolveProductForProjection($slot);
+
+        $this->slotRepository->save($slot, $command->machineId);
+        $this->syncProjection($command->machineId, $command->slotCode, $slot, $product);
+    }
+
+    private function assertQuantityPositive(AdminAdjustSlotInventoryCommand $command): void
+    {
         if ($command->quantity <= 0) {
             throw new InvalidArgumentException('Quantity must be greater than zero.');
         }
+    }
 
-        $slot = $this->slotRepository->findByMachineAndCode($command->machineId, SlotCode::fromString($command->slotCode));
+    private function findSlot(string $machineId, string $slotCode): InventorySlot
+    {
+        $slot = $this->slotRepository->findByMachineAndCode($machineId, SlotCode::fromString($slotCode));
 
         if (null === $slot) {
-            throw new InvalidArgumentException(sprintf('Slot "%s" not found for machine "%s".', $command->slotCode, $command->machineId));
+            throw new InvalidArgumentException(sprintf('Slot "%s" not found for machine "%s".', $slotCode, $machineId));
         }
 
-        if ($slot->status()->isReserved()) {
-            if (AdjustSlotInventoryOperation::Restock === $command->operation) {
-                throw new InvalidArgumentException('Slot cannot be restocked while it is reserved by an active session.');
-            }
+        return $slot;
+    }
 
-            if (AdjustSlotInventoryOperation::Withdraw === $command->operation) {
-                throw new InvalidArgumentException('Slot cannot be adjusted while it is reserved by an active session.');
+    private function assertSlotIsAdjustable(InventorySlot $slot, AdjustSlotInventoryOperation $operation): void
+    {
+        if (!$slot->status()->isReserved()) {
+            return;
+        }
+
+        $message = AdjustSlotInventoryOperation::Restock === $operation
+            ? 'Slot cannot be restocked while it is reserved by an active session.'
+            : 'Slot cannot be adjusted while it is reserved by an active session.';
+
+        throw new InvalidArgumentException($message);
+    }
+
+    private function restockSlot(InventorySlot $slot, AdminAdjustSlotInventoryCommand $command): Product
+    {
+        if (null === $command->productId) {
+            throw new InvalidArgumentException('Product id must be provided when restocking a slot.');
+        }
+
+        $productId = ProductId::fromString($command->productId);
+        $product = $this->productRepository->find($productId);
+
+        if (null === $product) {
+            throw new InvalidArgumentException('Product not found.');
+        }
+
+        if (!$slot->hasProductAssigned()) {
+            $slot->assignProduct($productId);
+        } elseif (!$slot->productId()?->equals($productId)) {
+            throw new InvalidArgumentException('Slot already assigned to a different product.');
+        }
+
+        $slot->restock($command->quantity);
+
+        return $product;
+    }
+
+    private function withdrawFromSlot(InventorySlot $slot, int $quantity): ?Product
+    {
+        $slot->removeStock($quantity);
+
+        if ($slot->quantity()->isZero()) {
+            $slot->disable();
+
+            if ($slot->hasProductAssigned()) {
+                $slot->clearProduct();
             }
         }
 
-        $product = null;
+        return null;
+    }
 
-        if (AdjustSlotInventoryOperation::Restock === $command->operation) {
-            if (null === $command->productId) {
-                throw new InvalidArgumentException('Product id must be provided when restocking a slot.');
-            }
-
-            $productId = ProductId::fromString($command->productId);
-            $product = $this->productRepository->find($productId);
-
-            if (null === $product) {
-                throw new InvalidArgumentException('Product not found.');
-            }
-
-            if (!$slot->hasProductAssigned()) {
-                $slot->assignProduct($productId);
-            } elseif (!$slot->productId()?->equals($productId)) {
-                throw new InvalidArgumentException('Slot already assigned to a different product.');
-            }
-
-            $slot->restock($command->quantity);
-        } else {
-            $slot->removeStock($command->quantity);
-
-            if ($slot->quantity()->isZero()) {
-                $slot->disable();
-                if ($slot->hasProductAssigned()) {
-                    $slot->clearProduct();
-                }
-            }
+    private function resolveProductForProjection(InventorySlot $slot): ?Product
+    {
+        if (null === $slot->productId()) {
+            return null;
         }
 
-        if (null === $product && null !== $slot->productId()) {
-            $product = $this->productRepository->find($slot->productId());
-        }
+        return $this->productRepository->find($slot->productId());
+    }
 
-        $this->slotRepository->save($slot, $command->machineId);
-
+    private function syncProjection(string $machineId, string $slotCode, InventorySlot $slot, ?Product $product): void
+    {
         /** @var SlotProjectionDocument|null $projection */
-        $projection = $this->documentManager->getRepository(SlotProjectionDocument::class)->findOneBy([
-            'machineId' => $command->machineId,
-            'slotCode' => $command->slotCode,
-        ]);
+        $projection = $this->documentManager
+            ->getRepository(SlotProjectionDocument::class)
+            ->findOneBy([
+                'machineId' => $machineId,
+                'slotCode' => $slotCode,
+            ]);
 
-        if (null !== $projection) {
-            $this->applyProjection($projection, $slot, $product);
-            $this->documentManager->flush();
+        if (null === $projection) {
+            return;
         }
+
+        $this->applyProjection($projection, $slot, $product);
+        $this->documentManager->flush();
     }
 
     private function applyProjection(SlotProjectionDocument $projection, InventorySlot $slot, ?Product $product): void

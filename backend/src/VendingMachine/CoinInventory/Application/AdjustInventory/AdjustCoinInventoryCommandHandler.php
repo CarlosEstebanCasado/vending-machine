@@ -27,42 +27,16 @@ final class AdjustCoinInventoryCommandHandler
 
     public function handle(AdjustCoinInventoryCommand $command): void
     {
-        $adjustmentBundle = $this->buildBundle($command->denominations);
+        $adjustment = $this->buildBundle($command->denominations);
+        $projection = $this->findProjection($command->machineId);
+        $inventory = $this->rebuildInventory($command->machineId);
 
-        /** @var CoinInventoryProjectionDocument|null $projection */
-        $projection = $this->documentManager
-            ->getRepository(CoinInventoryProjectionDocument::class)
-            ->findOneBy(['machineId' => $command->machineId]);
-
-        if (null === $projection) {
-            throw new CoinInventoryNotFound(sprintf('Coin inventory not found for machine "%s".', $command->machineId));
-        }
-
-        $inventorySnapshot = $this->coinInventoryRepository->find($command->machineId)
-            ?? new CoinInventorySnapshot($command->machineId, [], [], false, new DateTimeImmutable());
-
-        $availableBundle = CoinBundle::fromArray($inventorySnapshot->available);
-        $reservedBundle = CoinBundle::fromArray($inventorySnapshot->reserved);
-
-        $inventory = CoinInventory::restore($availableBundle, $reservedBundle);
-
-        match ($command->operation) {
-            AdjustCoinInventoryOperation::Deposit => $inventory->deposit($adjustmentBundle),
-            AdjustCoinInventoryOperation::Withdraw => $this->withdraw($inventory, $adjustmentBundle),
-        };
+        $this->applyAdjustment($inventory, $adjustment, $command->operation);
 
         $insufficientChange = !$this->changeAvailabilityChecker->isChangeSufficient($inventory);
 
-        $this->coinInventoryRepository->save(new CoinInventorySnapshot(
-            machineId: $command->machineId,
-            available: $inventory->availableCoins()->toArray(),
-            reserved: $inventory->reservedCoins()->toArray(),
-            insufficientChange: $insufficientChange,
-            updatedAt: new DateTimeImmutable(),
-        ));
-
-        $projection->applyInventory($inventory, $insufficientChange);
-        $this->documentManager->flush();
+        $this->persistSnapshot($command->machineId, $inventory, $insufficientChange);
+        $this->updateProjection($projection, $inventory, $insufficientChange);
     }
 
     /**
@@ -101,5 +75,61 @@ final class AdjustCoinInventoryCommandHandler
         }
 
         $inventory->withdraw($bundle);
+    }
+
+    private function findProjection(string $machineId): CoinInventoryProjectionDocument
+    {
+        /** @var CoinInventoryProjectionDocument|null $projection */
+        $projection = $this->documentManager
+            ->getRepository(CoinInventoryProjectionDocument::class)
+            ->findOneBy(['machineId' => $machineId]);
+
+        if (null === $projection) {
+            throw new CoinInventoryNotFound(sprintf('Coin inventory not found for machine "%s".', $machineId));
+        }
+
+        return $projection;
+    }
+
+    private function rebuildInventory(string $machineId): CoinInventory
+    {
+        $snapshot = $this->coinInventoryRepository->find($machineId)
+            ?? new CoinInventorySnapshot($machineId, [], [], false, new DateTimeImmutable());
+
+        return CoinInventory::restore(
+            CoinBundle::fromArray($snapshot->available),
+            CoinBundle::fromArray($snapshot->reserved),
+        );
+    }
+
+    private function applyAdjustment(
+        CoinInventory $inventory,
+        CoinBundle $bundle,
+        AdjustCoinInventoryOperation $operation,
+    ): void {
+        match ($operation) {
+            AdjustCoinInventoryOperation::Deposit => $inventory->deposit($bundle),
+            AdjustCoinInventoryOperation::Withdraw => $this->withdraw($inventory, $bundle),
+        };
+    }
+
+    private function persistSnapshot(string $machineId, CoinInventory $inventory, bool $insufficientChange): void
+    {
+        $this->coinInventoryRepository->save(new CoinInventorySnapshot(
+            machineId: $machineId,
+            available: $inventory->availableCoins()->toArray(),
+            reserved: $inventory->reservedCoins()->toArray(),
+            insufficientChange: $insufficientChange,
+            updatedAt: new DateTimeImmutable(),
+        ));
+    }
+
+    private function updateProjection(
+        CoinInventoryProjectionDocument $projection,
+        CoinInventory $inventory,
+        bool $insufficientChange,
+    ): void {
+        $projection->applyInventory($inventory, $insufficientChange);
+        $this->documentManager->flush();
     }
 }
