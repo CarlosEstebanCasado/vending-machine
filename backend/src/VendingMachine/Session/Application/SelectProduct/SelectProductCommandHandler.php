@@ -24,45 +24,14 @@ final class SelectProductCommandHandler
 
     public function handle(SelectProductCommand $command): StartSessionResult
     {
-        /** @var ActiveSessionDocument|null $document */
-        $document = $this->documentManager->find(ActiveSessionDocument::class, $command->machineId);
-
-        if (null === $document || null === $document->sessionId()) {
-            throw new DomainException('No active session found for this machine.');
-        }
-
-        if ($document->sessionId() !== $command->sessionId) {
-            throw new DomainException('The provided session id does not match the active session.');
-        }
-
+        $document = $this->loadActiveSession($command);
         $previousSlotCode = $document->selectedSlotCode();
 
-        $slotCode = SlotCode::fromString($command->slotCode);
-        $slot = $this->slotRepository->findByMachineAndCode($command->machineId, $slotCode);
+        $slot = $this->loadSlot($command->machineId, $command->slotCode);
+        $this->assertSlotIsReservable($slot, $command->slotCode, $previousSlotCode);
 
-        if (null === $slot) {
-            throw new DomainException(sprintf('Slot "%s" not found for machine "%s".', $command->slotCode, $command->machineId));
-        }
-
-        if ($slot->quantity()->isZero()) {
-            throw new DomainException('Selected slot is empty.');
-        }
-
-        if ($slot->status()->isDisabled()) {
-            throw new DomainException('Selected slot is disabled.');
-        }
-
-        if ($slot->status()->isReserved() && $previousSlotCode !== $command->slotCode) {
-            throw new DomainException('Selected slot is currently reserved.');
-        }
-
-        if (null !== $previousSlotCode && $previousSlotCode !== $command->slotCode) {
-            $this->releaseSlot($command->machineId, $previousSlotCode);
-        }
-
-        $slot->markReserved();
-        $this->slotRepository->save($slot, $command->machineId);
-        $this->syncProjection($command->machineId, $command->slotCode, $slot);
+        $this->releasePreviousSlot($command->machineId, $command->slotCode, $previousSlotCode);
+        $this->reserveSlot($command->machineId, $command->slotCode, $slot);
 
         $session = $document->toVendingSession();
         $session->selectProduct(ProductId::fromString($command->productId));
@@ -79,6 +48,69 @@ final class SelectProductCommandHandler
             selectedProductId: $session->selectedProductId()?->value(),
             selectedSlotCode: $document->selectedSlotCode(),
         );
+    }
+
+    private function loadActiveSession(SelectProductCommand $command): ActiveSessionDocument
+    {
+        /** @var ActiveSessionDocument|null $document */
+        $document = $this->documentManager->find(ActiveSessionDocument::class, $command->machineId);
+
+        if (null === $document || null === $document->sessionId()) {
+            throw new DomainException('No active session found for this machine.');
+        }
+
+        if ($document->sessionId() !== $command->sessionId) {
+            throw new DomainException('The provided session id does not match the active session.');
+        }
+
+        return $document;
+    }
+
+    private function loadSlot(string $machineId, string $slotCode): InventorySlot
+    {
+        $slot = $this->slotRepository->findByMachineAndCode($machineId, SlotCode::fromString($slotCode));
+
+        if (null === $slot) {
+            throw new DomainException(sprintf('Slot "%s" not found for machine "%s".', $slotCode, $machineId));
+        }
+
+        if ($slot->quantity()->isZero()) {
+            throw new DomainException('Selected slot is empty.');
+        }
+
+        if ($slot->status()->isDisabled()) {
+            throw new DomainException('Selected slot is disabled.');
+        }
+
+        return $slot;
+    }
+
+    private function assertSlotIsReservable(
+        InventorySlot $slot,
+        string $requestedSlotCode,
+        ?string $previousSlotCode,
+    ): void {
+        if (!$slot->status()->isReserved() || $previousSlotCode === $requestedSlotCode) {
+            return;
+        }
+
+        throw new DomainException('Selected slot is currently reserved.');
+    }
+
+    private function releasePreviousSlot(string $machineId, string $requestedSlotCode, ?string $previousSlotCode): void
+    {
+        if (null === $previousSlotCode || $previousSlotCode === $requestedSlotCode) {
+            return;
+        }
+
+        $this->releaseSlot($machineId, $previousSlotCode);
+    }
+
+    private function reserveSlot(string $machineId, string $slotCode, InventorySlot $slot): void
+    {
+        $slot->markReserved();
+        $this->slotRepository->save($slot, $machineId);
+        $this->syncProjection($machineId, $slotCode, $slot);
     }
 
     private function releaseSlot(string $machineId, string $slotCode): void

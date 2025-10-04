@@ -20,13 +20,29 @@ final class GetCoinInventoryQueryHandler
 
     public function handle(GetCoinInventoryQuery $query): CoinInventoryResult
     {
-        $snapshot = $this->coinInventoryRepository->find($query->machineId);
+        [$snapshot, $document] = $this->resolveSnapshot($query->machineId);
+        $balances = $this->buildBalances($snapshot);
+
+        return new CoinInventoryResult(
+            machineId: $snapshot?->machineId ?? $query->machineId,
+            balances: array_values($balances),
+            insufficientChange: $snapshot?->insufficientChange ?? $document?->insufficientChange() ?? false,
+            updatedAt: ($snapshot?->updatedAt ?? $document?->updatedAt() ?? new DateTimeImmutable())->format(DATE_ATOM),
+        );
+    }
+
+    /**
+     * @return array{0: ?CoinInventorySnapshot, 1: ?CoinInventoryProjectionDocument}
+     */
+    private function resolveSnapshot(string $machineId): array
+    {
+        $snapshot = $this->coinInventoryRepository->find($machineId);
 
         /** @var CoinInventoryProjectionDocument|null $document */
-        $document = $this->documentManager->find(CoinInventoryProjectionDocument::class, $query->machineId);
+        $document = $this->documentManager->find(CoinInventoryProjectionDocument::class, $machineId);
 
         if (null === $snapshot && null === $document) {
-            throw new CoinInventoryNotFound(sprintf('Coin inventory not found for machine "%s".', $query->machineId));
+            throw new CoinInventoryNotFound(sprintf('Coin inventory not found for machine "%s".', $machineId));
         }
 
         if (null === $snapshot && null !== $document) {
@@ -39,11 +55,17 @@ final class GetCoinInventoryQueryHandler
             );
         }
 
-        $available = $snapshot?->available ?? [];
-        $reserved = $snapshot?->reserved ?? [];
+        return [$snapshot, $document];
+    }
 
+    /**
+     * @return array<int, array{denomination:int, available:int, reserved:int}>
+     */
+    private function buildBalances(?CoinInventorySnapshot $snapshot): array
+    {
         $balances = [];
-        foreach ($available as $denomination => $quantity) {
+
+        foreach ($snapshot?->available ?? [] as $denomination => $quantity) {
             $balances[(int) $denomination] = [
                 'denomination' => (int) $denomination,
                 'available' => (int) $quantity,
@@ -51,27 +73,24 @@ final class GetCoinInventoryQueryHandler
             ];
         }
 
-        foreach ($reserved as $denomination => $quantity) {
+        foreach ($snapshot?->reserved ?? [] as $denomination => $quantity) {
             $denomination = (int) $denomination;
+            $reservedQuantity = (int) $quantity;
+
             if (!isset($balances[$denomination])) {
                 $balances[$denomination] = [
                     'denomination' => $denomination,
                     'available' => 0,
-                    'reserved' => (int) $quantity,
+                    'reserved' => $reservedQuantity,
                 ];
                 continue;
             }
 
-            $balances[$denomination]['reserved'] = (int) $quantity;
+            $balances[$denomination]['reserved'] = $reservedQuantity;
         }
 
         krsort($balances);
 
-        return new CoinInventoryResult(
-            machineId: $snapshot?->machineId ?? $query->machineId,
-            balances: array_values($balances),
-            insufficientChange: $snapshot?->insufficientChange ?? $document?->insufficientChange() ?? false,
-            updatedAt: ($snapshot?->updatedAt ?? $document?->updatedAt() ?? new DateTimeImmutable())->format(DATE_ATOM),
-        );
+        return $balances;
     }
 }
