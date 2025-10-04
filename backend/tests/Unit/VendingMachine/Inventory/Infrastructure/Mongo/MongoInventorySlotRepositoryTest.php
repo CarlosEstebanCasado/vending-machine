@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Inventory\Infrastructure\Mongo;
 
+use App\Tests\Unit\VendingMachine\Inventory\Domain\InventorySlotMother;
 use App\VendingMachine\Inventory\Domain\InventorySlot;
 use App\VendingMachine\Inventory\Domain\ValueObject\InventorySlotId;
 use App\VendingMachine\Inventory\Domain\ValueObject\RestockThreshold;
@@ -71,14 +72,14 @@ final class MongoInventorySlotRepositoryTest extends TestCase
 
         $repository = new MongoInventorySlotRepository($documentManager);
 
-        $slot = InventorySlot::restore(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(5),
-            RestockThreshold::fromInt(2),
-            SlotStatus::Available,
-            ProductId::fromString('product-1'),
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(5),
+            restockThreshold: RestockThreshold::fromInt(2),
+            status: SlotStatus::Available,
+            productId: ProductId::fromString('product-1'),
         );
 
         $repository->save($slot, 'machine-1');
@@ -111,14 +112,13 @@ final class MongoInventorySlotRepositoryTest extends TestCase
 
         $repository = new MongoInventorySlotRepository($documentManager);
 
-        $slot = InventorySlot::restore(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(3),
-            RestockThreshold::fromInt(2),
-            SlotStatus::Reserved,
-            null,
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(3),
+            restockThreshold: RestockThreshold::fromInt(2),
+            status: SlotStatus::Reserved,
         );
 
         $repository->save($slot, 'machine-1');

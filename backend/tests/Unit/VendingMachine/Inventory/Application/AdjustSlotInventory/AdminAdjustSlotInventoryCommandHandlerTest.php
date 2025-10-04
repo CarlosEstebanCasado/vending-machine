@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\VendingMachine\Inventory\Application\AdjustSlotInventory;
 
 use App\Shared\Money\Domain\Money;
+use App\Tests\Unit\VendingMachine\Inventory\Domain\InventorySlotMother;
+use App\Tests\Unit\VendingMachine\Product\Domain\ProductMother;
 use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdjustSlotInventoryOperation;
 use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommand;
 use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommandHandler;
@@ -17,7 +19,6 @@ use App\VendingMachine\Inventory\Domain\ValueObject\SlotCode;
 use App\VendingMachine\Inventory\Domain\ValueObject\SlotQuantity;
 use App\VendingMachine\Inventory\Domain\ValueObject\SlotStatus;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
-use App\VendingMachine\Product\Domain\Product;
 use App\VendingMachine\Product\Domain\ProductRepository;
 use App\VendingMachine\Product\Domain\ValueObject\ProductId;
 use App\VendingMachine\Product\Domain\ValueObject\ProductName;
@@ -33,11 +34,13 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
 {
     public function testRestockAssignsProductAndUpdatesProjection(): void
     {
-        $slot = InventorySlot::create(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(0),
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(0),
+            restockThreshold: RestockThreshold::fromInt(2),
+            status: SlotStatus::Available,
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);
@@ -53,13 +56,13 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
                     && SlotStatus::Available === $savedSlot->status();
             }), 'machine-1');
 
-        $product = Product::create(
-            ProductId::fromString('product-1'),
-            ProductSku::fromString('SKU-001'),
-            ProductName::fromString('Water'),
-            Money::fromCents(65),
-            ProductStatus::Active,
-            RecommendedSlotQuantity::fromInt(8),
+        $product = ProductMother::random(
+            id: ProductId::fromString('product-1'),
+            sku: ProductSku::fromString('SKU-001'),
+            name: ProductName::fromString('Water'),
+            price: Money::fromCents(65),
+            status: ProductStatus::Active,
+            recommendedSlotQuantity: RecommendedSlotQuantity::fromInt(8),
         );
 
         $productRepository = $this->createMock(ProductRepository::class);
@@ -175,10 +178,11 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
 
     public function testRestockRequiresProductId(): void
     {
-        $slot = InventorySlot::create(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(0),
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);
@@ -210,10 +214,11 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
 
     public function testRestockFailsWhenProductNotFound(): void
     {
-        $slot = InventorySlot::create(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(0),
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);
@@ -247,14 +252,14 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
 
     public function testRestockFailsWhenSlotAssignedToAnotherProduct(): void
     {
-        $slot = InventorySlot::restore(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(2),
-            RestockThreshold::fromInt(1),
-            SlotStatus::Available,
-            ProductId::fromString('product-1'),
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(2),
+            restockThreshold: RestockThreshold::fromInt(1),
+            status: SlotStatus::Available,
+            productId: ProductId::fromString('product-1'),
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);
@@ -262,13 +267,13 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
             ->method('findByMachineAndCode')
             ->willReturn($slot);
 
-        $product = Product::create(
-            ProductId::fromString('product-2'),
-            ProductSku::fromString('SKU-002'),
-            ProductName::fromString('Juice'),
-            Money::fromCents(120),
-            ProductStatus::Active,
-            RecommendedSlotQuantity::fromInt(6),
+        $product = ProductMother::random(
+            id: ProductId::fromString('product-2'),
+            sku: ProductSku::fromString('SKU-002'),
+            name: ProductName::fromString('Juice'),
+            price: Money::fromCents(120),
+            status: ProductStatus::Active,
+            recommendedSlotQuantity: RecommendedSlotQuantity::fromInt(6),
         );
 
         $productRepository = $this->createMock(ProductRepository::class);
@@ -297,14 +302,14 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
 
     public function testRestockFailsWhenSlotReserved(): void
     {
-        $slot = InventorySlot::restore(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(3),
-            RestockThreshold::fromInt(1),
-            SlotStatus::Reserved,
-            ProductId::fromString('product-1'),
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(3),
+            restockThreshold: RestockThreshold::fromInt(1),
+            status: SlotStatus::Reserved,
+            productId: ProductId::fromString('product-1'),
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);
@@ -338,14 +343,14 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
 
     public function testWithdrawFailsWhenSlotReserved(): void
     {
-        $slot = InventorySlot::restore(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(3),
-            RestockThreshold::fromInt(1),
-            SlotStatus::Reserved,
-            ProductId::fromString('product-1'),
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(3),
+            restockThreshold: RestockThreshold::fromInt(1),
+            status: SlotStatus::Reserved,
+            productId: ProductId::fromString('product-1'),
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);
@@ -379,14 +384,14 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
 
     public function testWithdrawClearsSlotWhenEmpty(): void
     {
-        $slot = InventorySlot::restore(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(2),
-            RestockThreshold::fromInt(1),
-            SlotStatus::Available,
-            ProductId::fromString('product-1'),
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(2),
+            restockThreshold: RestockThreshold::fromInt(1),
+            status: SlotStatus::Available,
+            productId: ProductId::fromString('product-1'),
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);

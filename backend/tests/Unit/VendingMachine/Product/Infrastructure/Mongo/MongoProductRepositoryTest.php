@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\VendingMachine\Product\Infrastructure\Mongo;
 
 use App\Shared\Money\Domain\Money;
+use App\Tests\Unit\VendingMachine\Product\Domain\ProductMother;
 use App\VendingMachine\Product\Domain\Product;
 use App\VendingMachine\Product\Domain\ValueObject\ProductId;
 use App\VendingMachine\Product\Domain\ValueObject\ProductName;
@@ -66,7 +67,14 @@ final class MongoProductRepositoryTest extends TestCase
             ->method('flush');
 
         $repository = new MongoProductRepository($documentManager);
-        $product = $this->createProduct('product-1', 'SKU-001', 'Water', 65);
+        $product = ProductMother::random(
+            id: ProductId::fromString('product-1'),
+            sku: ProductSku::fromString('SKU-001'),
+            name: ProductName::fromString('Water'),
+            price: Money::fromCents(65),
+            status: ProductStatus::Active,
+            recommendedSlotQuantity: RecommendedSlotQuantity::fromInt(8),
+        );
 
         $repository->save($product);
     }
@@ -95,7 +103,14 @@ final class MongoProductRepositoryTest extends TestCase
             ->method('flush');
 
         $repository = new MongoProductRepository($documentManager);
-        $updated = $this->createProduct('product-1', 'SKU-NEW', 'New Name', 150);
+        $updated = ProductMother::random(
+            id: ProductId::fromString('product-1'),
+            sku: ProductSku::fromString('SKU-NEW'),
+            name: ProductName::fromString('New Name'),
+            price: Money::fromCents(150),
+            status: ProductStatus::Active,
+            recommendedSlotQuantity: RecommendedSlotQuantity::fromInt(8),
+        );
 
         $repository->save($updated);
 
@@ -161,17 +176,5 @@ final class MongoProductRepositoryTest extends TestCase
 
         self::assertCount(2, $products);
         self::assertSame(['product-1', 'product-2'], array_map(static fn (Product $product): string => $product->id()->value(), $products));
-    }
-
-    private function createProduct(string $id, string $sku, string $name, int $priceCents): Product
-    {
-        return Product::create(
-            ProductId::fromString($id),
-            ProductSku::fromString($sku),
-            ProductName::fromString($name),
-            Money::fromCents($priceCents),
-            ProductStatus::Active,
-            RecommendedSlotQuantity::fromInt(8),
-        );
     }
 }

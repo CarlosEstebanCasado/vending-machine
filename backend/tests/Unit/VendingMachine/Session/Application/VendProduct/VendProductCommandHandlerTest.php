@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Session\Application\VendProduct;
 
+use App\Tests\Unit\VendingMachine\Inventory\Domain\InventorySlotMother;
 use App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository;
 use App\VendingMachine\CoinInventory\Domain\CoinInventorySnapshot;
 use App\VendingMachine\CoinInventory\Domain\Service\ChangeAvailabilityChecker;
@@ -205,14 +206,13 @@ final class VendProductCommandHandlerTest extends TestCase
         $documentManager->expects(self::once())
             ->method('flush');
 
-        $slot = InventorySlot::restore(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(2),
-            RestockThreshold::fromInt(1),
-            SlotStatus::Reserved,
-            null,
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(2),
+            restockThreshold: RestockThreshold::fromInt(1),
+            status: SlotStatus::Reserved,
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);
@@ -349,14 +349,14 @@ final class VendProductCommandHandlerTest extends TestCase
                 return 1 === ($snapshot->available[100] ?? 0);
             }));
 
-        $slotAggregate = InventorySlot::restore(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(2),
-            RestockThreshold::fromInt(1),
-            SlotStatus::Available,
-            ProductId::fromString('product-1'),
+        $slotAggregate = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(2),
+            restockThreshold: RestockThreshold::fromInt(1),
+            status: SlotStatus::Available,
+            productId: ProductId::fromString('product-1'),
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);

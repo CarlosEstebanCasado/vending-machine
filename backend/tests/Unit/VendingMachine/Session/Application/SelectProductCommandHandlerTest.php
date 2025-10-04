@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Session\Application;
 
+use App\Tests\Unit\VendingMachine\Inventory\Domain\InventorySlotMother;
 use App\VendingMachine\Inventory\Domain\InventorySlot;
 use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
 use App\VendingMachine\Inventory\Domain\ValueObject\InventorySlotId;
@@ -56,14 +57,13 @@ final class SelectProductCommandHandlerTest extends TestCase
         $documentManager->expects(self::once())
             ->method('flush');
 
-        $slot = InventorySlot::restore(
-            InventorySlotId::fromString('slot-1'),
-            SlotCode::fromString('11'),
-            SlotCapacity::fromInt(10),
-            SlotQuantity::fromInt(5),
-            RestockThreshold::fromInt(2),
-            SlotStatus::Available,
-            null,
+        $slot = InventorySlotMother::random(
+            id: InventorySlotId::fromString('slot-1'),
+            code: SlotCode::fromString('11'),
+            capacity: SlotCapacity::fromInt(10),
+            quantity: SlotQuantity::fromInt(5),
+            restockThreshold: RestockThreshold::fromInt(2),
+            status: SlotStatus::Available,
         );
 
         $slotRepository = $this->createMock(InventorySlotRepository::class);
