@@ -15,7 +15,25 @@
           @select="selectSlot"
         />
 
-        <div class="dispense-tray"></div>
+        <div class="dispense-tray">
+          <button
+            v-if="dispensedProduct"
+            type="button"
+            class="dispensed-product"
+            @click="collectDispensedProduct"
+          >
+            <div class="dispensed-product__image">
+              <img
+                v-if="dispensedProduct.imageSrc"
+                :src="dispensedProduct.imageSrc"
+                :alt="dispensedProduct.productName"
+              />
+              <span v-else class="dispensed-product__fallback">{{ dispensedProduct.slotCode }}</span>
+            </div>
+            <span class="dispensed-product__label">{{ dispensedProduct.productName }}</span>
+            <span class="dispensed-product__hint">Tap to collect</span>
+          </button>
+        </div>
       </section>
 
       <MachineControlPanel
@@ -60,6 +78,17 @@ import { useMachineStore } from '@/modules/machine/store/useMachineStore'
 import MachineHeader from '@/modules/machine/components/MachineHeader.vue'
 import MachineProductGrid from '@/modules/machine/components/MachineProductGrid.vue'
 import MachineControlPanel, { type DispensedCoin } from '@/modules/machine/components/MachineControlPanel.vue'
+import { getProductImage } from '@/modules/machine/utils/productAssets'
+
+type ProductSnapshot = {
+  slotCode: string
+  productName: string
+}
+
+type DispensedProduct = ProductSnapshot & {
+  id: number
+  imageSrc?: string
+}
 
 export default defineComponent({
   name: 'MachineDashboard',
@@ -82,6 +111,9 @@ export default defineComponent({
       returnCountdownId: null as number | null,
       coinDispenseTimeoutId: null as number | null,
       dispensedCoins: [] as DispensedCoin[],
+      vendInProgress: false,
+      vendCountdownId: null as number | null,
+      dispensedProduct: null as DispensedProduct | null,
     }
   },
   watch: {
@@ -122,6 +154,7 @@ export default defineComponent({
     this.clearInfoTimeout()
     this.clearReturnCountdown()
     this.clearCoinDispenseTimeout()
+    this.clearVendCountdown()
   },
   computed: {
     ...mapStores(useMachineStore),
@@ -266,10 +299,10 @@ export default defineComponent({
       return hasBalance || hasInsertedCoins
     },
     returnButtonDisabled(): boolean {
-      return this.loading || this.returnInProgress || !this.canReturnCoins
+      return this.loading || this.returnInProgress || this.vendInProgress || !this.canReturnCoins
     },
     purchaseDisabled(): boolean {
-      if (this.loading || this.returnInProgress) {
+      if (this.loading || this.returnInProgress || this.vendInProgress || this.dispensedProduct) {
         return true
       }
 
@@ -297,6 +330,10 @@ export default defineComponent({
       }).format(cents / 100)
     },
     async selectSlot(slotCode: string): Promise<void> {
+      if (this.vendInProgress) {
+        return
+      }
+
       if (await this.trySelectSlot(slotCode)) {
         this.resetEnteredCode()
       }
@@ -319,6 +356,10 @@ export default defineComponent({
       await this.handleNumericKey(value)
     },
     async handleInsertCoin(coinValue: number): Promise<void> {
+      if (this.vendInProgress) {
+        return
+      }
+
       const ready = await this.ensureSessionReady()
       if (!ready) {
         return
@@ -340,7 +381,29 @@ export default defineComponent({
         return
       }
 
-      this.setInfo('Dispensing product...')
+      const product = this.selectedProduct
+      if (!product) {
+        return
+      }
+
+      const snapshot: ProductSnapshot = {
+        slotCode: product.slotCode,
+        productName: product.productName ?? 'Product',
+      }
+
+      this.vendInProgress = true
+      this.setInfo('Preparing your product...')
+      this.clearVendCountdown()
+
+      this.vendCountdownId = window.setTimeout(() => {
+        void this.executePurchase(snapshot)
+      }, 5000)
+    },
+    async executePurchase(snapshot: ProductSnapshot): Promise<void> {
+      this.clearVendCountdown()
+
+      this.dispensedProduct = this.createDispensedProduct(snapshot)
+      this.setInfo('Product ready! Tap to collect')
 
       try {
         const result = await this.machineStore.purchaseProduct()
@@ -348,12 +411,16 @@ export default defineComponent({
         if (result.sale.status === 'completed') {
           if (Object.keys(result.sale.changeDispensed).length > 0) {
             this.enqueueReturnedCoins(result.sale.changeDispensed)
-            this.setInfo('Please collect your change')
+            this.setInfo('Please collect your product and change')
           } else {
-            this.setInfo('Enjoy your product!', 3000)
+            this.setInfo('Please collect your product')
           }
 
-          await this.machineStore.fetchMachineState()
+          try {
+            await this.machineStore.fetchMachineState()
+          } catch (refreshError) {
+            console.error('Failed to refresh machine state', refreshError)
+          }
           this.selectedSlotCode = ''
           this.lastConfirmedSlotCode = ''
         } else if (result.sale.status === 'cancelled_insufficient_change') {
@@ -361,13 +428,31 @@ export default defineComponent({
             this.enqueueReturnedCoins(result.sale.returnedCoins)
           }
 
+          this.dispensedProduct = null
           this.setInfo('Unable to provide exact change. Returning coins.')
+
+          try {
+            await this.machineStore.fetchMachineState()
+          } catch (refreshError) {
+            console.error('Failed to refresh machine state after cancellation', refreshError)
+          }
+
+          this.selectedSlotCode = ''
+          this.lastConfirmedSlotCode = ''
         }
       } catch (error) {
         console.error('Failed to complete purchase', error)
+        this.dispensedProduct = null
+        this.setInfo(null)
+      } finally {
+        this.vendInProgress = false
       }
     },
     async handleReturnCoins(): Promise<void> {
+      if (this.vendInProgress) {
+        return
+      }
+
       if (this.returnInProgress) {
         return
       }
@@ -375,7 +460,11 @@ export default defineComponent({
       const hasDispensedCoins = this.dispensedCoins.length > 0
 
       if (hasDispensedCoins) {
-        this.setInfo('Please collect your coins')
+        if (this.dispensedProduct) {
+          this.setInfo('Please collect your product and change')
+        } else {
+          this.setInfo('Please collect your coins')
+        }
         return
       }
 
@@ -461,7 +550,32 @@ export default defineComponent({
       this.dispensedCoins = this.dispensedCoins.filter((coin) => coin.id !== id)
 
       if (this.dispensedCoins.length === 0 && !this.returnInProgress) {
-        this.setInfo(null)
+        if (this.dispensedProduct) {
+          this.setInfo('Please collect your product')
+        } else {
+          this.setInfo(null)
+        }
+      }
+    },
+    collectDispensedProduct(): void {
+      if (!this.dispensedProduct) {
+        return
+      }
+
+      this.dispensedProduct = null
+
+      if (this.dispensedCoins.length > 0) {
+        this.setInfo('Please collect your change')
+      } else {
+        this.setInfo('Enjoy your product!', 3000)
+      }
+    },
+    createDispensedProduct(snapshot: ProductSnapshot): DispensedProduct {
+      return {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        slotCode: snapshot.slotCode,
+        productName: snapshot.productName,
+        imageSrc: getProductImage(snapshot.productName),
       }
     },
     async ensureSessionReady(): Promise<boolean> {
@@ -474,6 +588,10 @@ export default defineComponent({
       }
     },
     async trySelectSlot(slotCode: string): Promise<boolean> {
+      if (this.vendInProgress) {
+        return false
+      }
+
       const ready = await this.ensureSessionReady()
       if (!ready) {
         return false
@@ -554,6 +672,10 @@ export default defineComponent({
       return this.enteredCode
     },
     async handleClearSelection(): Promise<void> {
+      if (this.vendInProgress) {
+        return
+      }
+
       this.resetEnteredCode()
 
       this.clearReturnCountdown()
@@ -586,7 +708,7 @@ export default defineComponent({
       this.enteredCode = ''
     },
     canProcessKeypad(value: string): boolean {
-      return value !== '' && !this.loading
+      return value !== '' && !this.loading && !this.vendInProgress
     },
     clearSelectionTimeout(): void {
       if (this.selectionTimeoutId !== null) {
@@ -616,6 +738,12 @@ export default defineComponent({
       if (this.coinDispenseTimeoutId !== null) {
         window.clearTimeout(this.coinDispenseTimeoutId)
         this.coinDispenseTimeoutId = null
+      }
+    },
+    clearVendCountdown(): void {
+      if (this.vendCountdownId !== null) {
+        window.clearTimeout(this.vendCountdownId)
+        this.vendCountdownId = null
       }
     },
     setInfo(message: string | null, duration = 0): void {
@@ -682,6 +810,73 @@ export default defineComponent({
   border-radius: 18px;
   background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
   box-shadow: inset 0 12px 28px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.dispensed-product {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(226, 232, 240, 0.35);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  color: #f8fafc;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  backdrop-filter: blur(6px);
+}
+
+.dispensed-product:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.35);
+  border-color: rgba(226, 232, 240, 0.55);
+}
+
+.dispensed-product:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 4px;
+}
+
+.dispensed-product__image {
+  width: 120px;
+  height: 120px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.dispensed-product__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dispensed-product__fallback {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #cbd5f5;
+}
+
+.dispensed-product__label {
+  font-size: 1.1rem;
+}
+
+.dispensed-product__hint {
+  font-size: 0.85rem;
+  color: #cbd5f5;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 @media (max-width: 1024px) {

@@ -30,6 +30,7 @@
 <script lang="ts">
 import { defineComponent, type PropType } from 'vue'
 import type { MachineCatalogItem } from '@/modules/machine/api/getMachineState'
+import { getProductImage } from '@/modules/machine/utils/productAssets'
 
 export default defineComponent({
   name: 'MachineProductGrid',
@@ -58,17 +59,7 @@ export default defineComponent({
       }).format(cents / 100)
     },
     imageSrc(item: MachineCatalogItem): string | undefined {
-      if (!item.productName) {
-        return undefined
-      }
-
-      const map: Record<string, string> = {
-        Water: '/watter.png',
-        Soda: '/soda.png',
-        'Orange Juice': '/orange-juice.png',
-      }
-
-      return map[item.productName]
+      return getProductImage(item.productName)
     },
   },
 })

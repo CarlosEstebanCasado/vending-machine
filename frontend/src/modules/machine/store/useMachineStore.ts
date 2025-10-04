@@ -14,6 +14,8 @@ import { selectMachineProduct } from '@/modules/machine/api/selectMachineProduct
 import { vendMachineProduct, type VendMachineProductResult } from '@/modules/machine/api/vendMachineProduct'
 import { startMachineSession } from '@/modules/machine/api/startMachineSession'
 
+const ACTIVE_SESSION_STATES = new Set(['collecting', 'ready'])
+
 interface MachineStoreState {
   machineState: MachineState | null
   loading: boolean
@@ -48,6 +50,13 @@ export const useMachineStore = defineStore('machine', {
     },
   },
   actions: {
+    isReusableSession(session: MachineSession | null | undefined): session is MachineSession {
+      if (!session) {
+        return false
+      }
+
+      return ACTIVE_SESSION_STATES.has(session.state)
+    },
     resolveErrorMessage(error: unknown): string {
       if (error instanceof Error) {
         const message = error.message.trim()
@@ -101,8 +110,17 @@ export const useMachineStore = defineStore('machine', {
       }
     },
     async ensureSession(): Promise<MachineSession> {
-      if (this.machineState?.session) {
-        return this.machineState.session
+      const existingSession = this.machineState?.session ?? null
+
+      if (this.isReusableSession(existingSession)) {
+        return existingSession
+      }
+
+      if (existingSession && this.machineState) {
+        this.machineState = {
+          ...this.machineState,
+          session: null,
+        }
       }
 
       if (this.sessionPromise) {
