@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Machine\Infrastructure\Mongo\Document;
 
+use App\VendingMachine\Inventory\Domain\ValueObject\SlotStatus;
 use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
+use DomainException;
 
 #[ODM\Document(collection: 'machine_slots')]
 class SlotProjectionDocument
@@ -33,14 +35,14 @@ class SlotProjectionDocument
     #[ODM\Field(type: 'int')]
     private int $capacity;
 
-    #[ODM\Field(type: 'int')]
-    private int $recommendedSlotQuantity;
-
     #[ODM\Field(type: 'string')]
     private string $status;
 
     #[ODM\Field(type: 'bool')]
     private bool $lowStock;
+
+    #[ODM\Field(type: 'int')]
+    private int $recommendedSlotQuantity;
 
     public function __construct(
         string $machineId,
@@ -120,5 +122,28 @@ class SlotProjectionDocument
     public function lowStock(): bool
     {
         return $this->lowStock;
+    }
+
+    public function dispenseProduct(): void
+    {
+        if ($this->quantity <= 0) {
+            throw new DomainException('Cannot dispense from an empty slot.');
+        }
+
+        --$this->quantity;
+
+        if (0 === $this->quantity) {
+            $this->productId = null;
+            $this->productName = null;
+            $this->priceCents = null;
+            $this->status = SlotStatus::Disabled->value;
+            $this->lowStock = false;
+
+            return;
+        }
+
+        $threshold = max(1, (int) floor($this->recommendedSlotQuantity / 2));
+        $this->lowStock = $this->quantity <= $threshold;
+        $this->status = SlotStatus::Available->value;
     }
 }

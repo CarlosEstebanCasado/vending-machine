@@ -11,7 +11,10 @@ import { clearMachineSelection } from '@/modules/machine/api/clearMachineSelecti
 import { insertMachineCoin } from '@/modules/machine/api/insertMachineCoin'
 import { returnMachineCoins, type ReturnMachineCoinsResult } from '@/modules/machine/api/returnMachineCoins'
 import { selectMachineProduct } from '@/modules/machine/api/selectMachineProduct'
+import { vendMachineProduct, type VendMachineProductResult } from '@/modules/machine/api/vendMachineProduct'
 import { startMachineSession } from '@/modules/machine/api/startMachineSession'
+
+const ACTIVE_SESSION_STATES = new Set(['collecting', 'ready'])
 
 interface MachineStoreState {
   machineState: MachineState | null
@@ -47,6 +50,49 @@ export const useMachineStore = defineStore('machine', {
     },
   },
   actions: {
+    isReusableSession(session: MachineSession | null | undefined): session is MachineSession {
+      if (!session) {
+        return false
+      }
+
+      return ACTIVE_SESSION_STATES.has(session.state)
+    },
+    resolveErrorMessage(error: unknown): string {
+      if (error instanceof Error) {
+        const message = error.message.trim()
+
+        if (message.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(message)
+            if (parsed && typeof parsed === 'object' && 'error' in parsed) {
+              const payload = parsed.error as { message?: string }
+              if (payload && typeof payload.message === 'string' && payload.message.trim() !== '') {
+                return payload.message
+              }
+            }
+
+            if (parsed && typeof parsed === 'object' && 'message' in parsed) {
+              const text = (parsed as { message?: string }).message
+              if (typeof text === 'string' && text.trim() !== '') {
+                return text
+              }
+            }
+          } catch {
+            // ignore JSON parse errors and fall back to original message
+          }
+
+          return message
+        }
+
+        return message !== '' ? message : 'Unexpected error'
+      }
+
+      if (typeof error === 'string' && error.trim() !== '') {
+        return error
+      }
+
+      return 'Unexpected error'
+    },
     async fetchMachineState() {
       this.loading = true
       this.error = null
@@ -64,8 +110,17 @@ export const useMachineStore = defineStore('machine', {
       }
     },
     async ensureSession(): Promise<MachineSession> {
-      if (this.machineState?.session) {
-        return this.machineState.session
+      const existingSession = this.machineState?.session ?? null
+
+      if (this.isReusableSession(existingSession)) {
+        return existingSession
+      }
+
+      if (existingSession && this.machineState) {
+        this.machineState = {
+          ...this.machineState,
+          session: null,
+        }
       }
 
       if (this.sessionPromise) {
@@ -98,11 +153,7 @@ export const useMachineStore = defineStore('machine', {
           return session
         })
         .catch((error) => {
-          if (error instanceof Error) {
-            this.error = error.message
-          } else {
-            this.error = 'Unexpected error starting session'
-          }
+          this.error = this.resolveErrorMessage(error)
 
           throw error
         })
@@ -145,12 +196,42 @@ export const useMachineStore = defineStore('machine', {
 
         return result.session
       } catch (error) {
-        if (error instanceof Error) {
-          this.error = error.message
-        } else {
-          this.error = 'Unexpected error selecting product'
+        const message = this.resolveErrorMessage(error)
+
+        if (message.includes('No active session')) {
+          try {
+            await this.ensureSession()
+            const retry = await selectMachineProduct({
+              sessionId: this.machineState!.session!.id,
+              productId,
+              slotCode,
+            })
+
+            if (this.machineState) {
+              this.machineState = {
+                ...this.machineState,
+                machineId: retry.machineId,
+                session: retry.session,
+              }
+            } else {
+              this.machineState = {
+                machineId: retry.machineId,
+                timestamp: new Date().toISOString(),
+                session: retry.session,
+                catalog: [],
+                coins: { available: {}, reserved: {} },
+                alerts: { insufficientChange: false, outOfStock: [] },
+              }
+            }
+
+            return retry.session
+          } catch (retryError) {
+            this.error = this.resolveErrorMessage(retryError)
+            throw retryError
+          }
         }
 
+        this.error = message
         throw error
       } finally {
         this.loading = false
@@ -187,11 +268,7 @@ export const useMachineStore = defineStore('machine', {
 
         return result.session
       } catch (error) {
-        if (error instanceof Error) {
-          this.error = error.message
-        } else {
-          this.error = 'Unexpected error inserting coin'
-        }
+        this.error = this.resolveErrorMessage(error)
 
         throw error
       } finally {
@@ -231,11 +308,7 @@ export const useMachineStore = defineStore('machine', {
 
         return result.session
       } catch (error) {
-        if (error instanceof Error) {
-          this.error = error.message
-        } else {
-          this.error = 'Unexpected error clearing selection'
-        }
+        this.error = this.resolveErrorMessage(error)
 
         throw error
       } finally {
@@ -270,11 +343,42 @@ export const useMachineStore = defineStore('machine', {
 
         return result
       } catch (error) {
-        if (error instanceof Error) {
-          this.error = error.message
+        this.error = this.resolveErrorMessage(error)
+
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+    async purchaseProduct(): Promise<VendMachineProductResult> {
+      const activeSession = await this.ensureSession()
+
+      this.loading = true
+      this.error = null
+
+      try {
+        const result = await vendMachineProduct(activeSession.id)
+
+        if (this.machineState) {
+          this.machineState = {
+            ...this.machineState,
+            machineId: result.machineId,
+            session: result.session,
+          }
         } else {
-          this.error = 'Unexpected error returning coins'
+          this.machineState = {
+            machineId: result.machineId,
+            timestamp: new Date().toISOString(),
+            session: result.session,
+            catalog: [],
+            coins: { available: {}, reserved: {} },
+            alerts: { insufficientChange: false, outOfStock: [] },
+          }
         }
+
+        return result
+      } catch (error) {
+        this.error = this.resolveErrorMessage(error)
 
         throw error
       } finally {
