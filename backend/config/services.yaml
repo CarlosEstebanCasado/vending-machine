@@ -44,6 +44,8 @@ services:
 
     App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository: '@App\VendingMachine\CoinInventory\Infrastructure\Mongo\MongoCoinInventoryRepository'
 
+    App\VendingMachine\CoinInventory\Domain\Service\ChangeAvailabilityChecker: ~
+
     App\VendingMachine\Machine\Application\Service\MongoMachineStateProvider:
         arguments:
             $machineId: '%app.machine_id%'

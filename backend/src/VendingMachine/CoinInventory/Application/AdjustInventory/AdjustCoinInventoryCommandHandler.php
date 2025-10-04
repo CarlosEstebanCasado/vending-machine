@@ -8,6 +8,7 @@ use App\VendingMachine\CoinInventory\Application\GetInventory\CoinInventoryNotFo
 use App\VendingMachine\CoinInventory\Domain\CoinInventory;
 use App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository;
 use App\VendingMachine\CoinInventory\Domain\CoinInventorySnapshot;
+use App\VendingMachine\CoinInventory\Domain\Service\ChangeAvailabilityChecker;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinBundle;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinDenomination;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
@@ -20,6 +21,7 @@ final class AdjustCoinInventoryCommandHandler
     public function __construct(
         private readonly CoinInventoryRepository $coinInventoryRepository,
         private readonly DocumentManager $documentManager,
+        private readonly ChangeAvailabilityChecker $changeAvailabilityChecker,
     ) {
     }
 
@@ -37,7 +39,7 @@ final class AdjustCoinInventoryCommandHandler
         }
 
         $inventorySnapshot = $this->coinInventoryRepository->find($command->machineId)
-            ?? new CoinInventorySnapshot($command->machineId, [], [], new DateTimeImmutable());
+            ?? new CoinInventorySnapshot($command->machineId, [], [], false, new DateTimeImmutable());
 
         $availableBundle = CoinBundle::fromArray($inventorySnapshot->available);
         $reservedBundle = CoinBundle::fromArray($inventorySnapshot->reserved);
@@ -49,14 +51,17 @@ final class AdjustCoinInventoryCommandHandler
             AdjustCoinInventoryOperation::Withdraw => $this->withdraw($inventory, $adjustmentBundle),
         };
 
+        $insufficientChange = !$this->changeAvailabilityChecker->isChangeSufficient($inventory);
+
         $this->coinInventoryRepository->save(new CoinInventorySnapshot(
             machineId: $command->machineId,
             available: $inventory->availableCoins()->toArray(),
             reserved: $inventory->reservedCoins()->toArray(),
+            insufficientChange: $insufficientChange,
             updatedAt: new DateTimeImmutable(),
         ));
 
-        $projection->applyInventory($inventory, $projection->insufficientChange());
+        $projection->applyInventory($inventory, $insufficientChange);
         $this->documentManager->flush();
     }
 

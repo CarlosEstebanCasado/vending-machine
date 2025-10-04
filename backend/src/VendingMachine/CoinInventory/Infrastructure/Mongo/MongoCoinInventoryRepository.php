@@ -28,6 +28,7 @@ final class MongoCoinInventoryRepository implements CoinInventoryRepository
             machineId: $document->machineId(),
             available: $document->available(),
             reserved: $document->reserved(),
+            insufficientChange: $document->insufficientChange(),
             updatedAt: $document->updatedAt(),
         );
     }
@@ -42,11 +43,12 @@ final class MongoCoinInventoryRepository implements CoinInventoryRepository
                 machineId: $snapshot->machineId,
                 available: $snapshot->available,
                 reserved: $snapshot->reserved,
+                insufficientChange: $snapshot->insufficientChange,
                 updatedAt: $snapshot->updatedAt,
             );
             $this->documentManager->persist($document);
         } else {
-            $document->updateInventory($snapshot->available, $snapshot->reserved, $snapshot->updatedAt);
+            $document->updateInventory($snapshot->available, $snapshot->reserved, $snapshot->insufficientChange, $snapshot->updatedAt);
         }
 
         $this->documentManager->flush();

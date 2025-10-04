@@ -19,6 +19,9 @@ class CoinInventoryDocument
     #[ODM\Field(type: 'hash')]
     private array $reserved = [];
 
+    #[ODM\Field(type: 'bool')]
+    private bool $insufficientChange = false;
+
     #[ODM\Field(type: 'date_immutable')]
     private DateTimeImmutable $updatedAt;
 
@@ -26,11 +29,12 @@ class CoinInventoryDocument
      * @param array<int, int> $available
      * @param array<int, int> $reserved
      */
-    public function __construct(string $machineId, array $available = [], array $reserved = [], ?DateTimeImmutable $updatedAt = null)
+    public function __construct(string $machineId, array $available = [], array $reserved = [], bool $insufficientChange = false, ?DateTimeImmutable $updatedAt = null)
     {
         $this->machineId = $machineId;
         $this->setAvailable($available);
         $this->setReserved($reserved);
+        $this->insufficientChange = $insufficientChange;
         $this->updatedAt = $updatedAt ?? new DateTimeImmutable();
     }
 
@@ -55,14 +59,20 @@ class CoinInventoryDocument
         return $this->normalize($this->reserved);
     }
 
+    public function insufficientChange(): bool
+    {
+        return $this->insufficientChange;
+    }
+
     /**
      * @param array<int, int> $available
      * @param array<int, int> $reserved
      */
-    public function updateInventory(array $available, array $reserved, ?DateTimeImmutable $updatedAt = null): void
+    public function updateInventory(array $available, array $reserved, bool $insufficientChange, ?DateTimeImmutable $updatedAt = null): void
     {
         $this->setAvailable($available);
         $this->setReserved($reserved);
+        $this->insufficientChange = $insufficientChange;
         $this->updatedAt = $updatedAt ?? new DateTimeImmutable();
     }
 

@@ -34,6 +34,7 @@ final class GetCoinInventoryQueryHandler
                 machineId: $document->machineId(),
                 available: $document->available(),
                 reserved: $document->reserved(),
+                insufficientChange: $document->insufficientChange(),
                 updatedAt: $document->updatedAt(),
             );
         }
@@ -69,7 +70,7 @@ final class GetCoinInventoryQueryHandler
         return new CoinInventoryResult(
             machineId: $snapshot?->machineId ?? $query->machineId,
             balances: array_values($balances),
-            insufficientChange: $document?->insufficientChange() ?? false,
+            insufficientChange: $snapshot?->insufficientChange ?? $document?->insufficientChange() ?? false,
             updatedAt: ($snapshot?->updatedAt ?? $document?->updatedAt() ?? new DateTimeImmutable())->format(DATE_ATOM),
         );
     }

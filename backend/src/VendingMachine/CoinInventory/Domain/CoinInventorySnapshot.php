@@ -16,6 +16,7 @@ final readonly class CoinInventorySnapshot
         public string $machineId,
         public array $available,
         public array $reserved,
+        public bool $insufficientChange,
         public DateTimeImmutable $updatedAt,
     ) {
     }

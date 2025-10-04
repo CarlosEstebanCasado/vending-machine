@@ -225,6 +225,7 @@ final class SeedMachineStateCommand extends Command
             machineId: $this->machineId,
             available: $available,
             reserved: [],
+            insufficientChange: false,
             updatedAt: $snapshotUpdatedAt,
         );
 
