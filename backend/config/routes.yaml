@@ -5,13 +5,6 @@ system_controllers:
     type: attribute
     prefix: /api
 
-vending_controllers:
-    resource:
-        path: ../src/VendingMachine/Product/UI/Http/Controller/
-        namespace: App\VendingMachine\Product\UI\Http\Controller
-    type: attribute
-    prefix: /api
-
 machine_controllers:
     resource:
         path: ../src/VendingMachine/Machine/UI/Http/Controller/
