@@ -19,6 +19,8 @@ use Doctrine\ODM\MongoDB\DocumentManager;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use MongoDB\Driver\Exception\ConnectionException;
+use MongoDB\Driver\Exception\ConnectionTimeoutException;
 
 use function json_decode;
 use function json_encode;
@@ -37,6 +39,7 @@ final class AdminInventoryControllerTest extends KernelTestCase
         $this->documentManager = $container->get(DocumentManager::class);
         $this->machineId = $container->get('parameter_bag')->get('app.machine_id');
 
+        $this->ensureMongoAvailable();
         $this->purgeCollections();
     }
 
@@ -44,6 +47,17 @@ final class AdminInventoryControllerTest extends KernelTestCase
     {
         $this->purgeCollections();
         parent::tearDown();
+    }
+
+    private function ensureMongoAvailable(): void
+    {
+        try {
+            $client = $this->documentManager->getClient();
+            $database = $this->documentManager->getConfiguration()->getDefaultDB();
+            $client->selectDatabase($database)->command(['ping' => 1]);
+        } catch (ConnectionTimeoutException|ConnectionException $exception) {
+            self::markTestSkipped('MongoDB connection unavailable: ' . $exception->getMessage());
+        }
     }
 
     public function testGetSlotsReturnsInventoryData(): void
@@ -146,16 +160,20 @@ final class AdminInventoryControllerTest extends KernelTestCase
 
     private function purgeCollections(): void
     {
-        foreach ([
-            InventorySlotDocument::class,
-            SlotProjectionDocument::class,
-            ProductDocument::class,
-            AdminUserDocument::class,
-        ] as $documentClass) {
-            $this->documentManager->createQueryBuilder($documentClass)
-                ->remove()
-                ->getQuery()
-                ->execute();
+        try {
+            foreach ([
+                InventorySlotDocument::class,
+                SlotProjectionDocument::class,
+                ProductDocument::class,
+                AdminUserDocument::class,
+            ] as $documentClass) {
+                $this->documentManager->createQueryBuilder($documentClass)
+                    ->remove()
+                    ->getQuery()
+                    ->execute();
+            }
+        } catch (ConnectionTimeoutException|ConnectionException) {
+            // Mongo is unavailable (e.g. CI without Mongo service); purge can be skipped.
         }
     }
 
