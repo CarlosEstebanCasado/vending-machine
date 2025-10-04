@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Inventory\Application\AdjustSlotInventory;
 
+use App\Shared\Money\Domain\Money;
 use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdjustSlotInventoryOperation;
 use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommand;
 use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommandHandler;
-use App\Shared\Money\Domain\Money;
 use App\VendingMachine\Inventory\Domain\InventorySlot;
 use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
 use App\VendingMachine\Inventory\Domain\ValueObject\InventorySlotId;

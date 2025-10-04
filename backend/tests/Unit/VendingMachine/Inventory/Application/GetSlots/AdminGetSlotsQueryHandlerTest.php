@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Inventory\Application\GetSlots;
 
+use App\Shared\Money\Domain\Money;
 use App\VendingMachine\Inventory\Application\GetSlots\AdminGetSlotsQuery;
 use App\VendingMachine\Inventory\Application\GetSlots\AdminGetSlotsQueryHandler;
 use App\VendingMachine\Inventory\Application\GetSlots\AdminSlotsInventoryResult;
-use App\Shared\Money\Domain\Money;
 use App\VendingMachine\Inventory\Domain\InventorySlot;
 use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
 use App\VendingMachine\Inventory\Domain\ValueObject\InventorySlotId;
