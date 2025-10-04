@@ -44,19 +44,14 @@ final class VendProductCommandHandler
         $priceCents = $this->requireProductPrice($slotDocument);
         $this->assertSufficientBalance($session, $priceCents);
 
-        [$baseInventory, $coinInventoryDocument, $snapshot] = $this->loadCoinInventory($command->machineId);
+        [$baseInventory, $coinInventoryDocument] = $this->loadCoinInventory($command->machineId);
 
-        $planningInventory = CoinInventory::restore(
-            CoinBundle::fromArray($baseInventory->availableCoins()->toArray()),
-            CoinBundle::fromArray($baseInventory->reservedCoins()->toArray()),
-        );
-        $planningInventory->deposit($session->insertedCoins());
-
+        $planningInventory = $this->createPlanningInventory($baseInventory, $session);
         $changeAmount = $session->balance()->amountInCents() - $priceCents;
 
         try {
             $changeBundle = $this->planChangeBundle($planningInventory, $changeAmount);
-        } catch (DomainException $exception) {
+        } catch (DomainException) {
             return $this->handleInsufficientChange(
                 session: $session,
                 sessionDocument: $sessionDocument,
@@ -157,9 +152,6 @@ final class VendProductCommandHandler
         }
     }
 
-    /**
-     * @return array{0: CoinInventory, 1: CoinInventoryProjectionDocument, 2: CoinInventorySnapshot}
-     */
     private function loadCoinInventory(string $machineId): array
     {
         $snapshot = $this->coinInventoryRepository->find($machineId)
@@ -183,7 +175,7 @@ final class VendProductCommandHandler
             $this->documentManager->persist($coinInventoryDocument);
         }
 
-        return [$inventory, $coinInventoryDocument, $snapshot];
+        return [$inventory, $coinInventoryDocument];
     }
 
     private function planChangeBundle(CoinInventory $planningInventory, int $changeAmount): CoinBundle
@@ -346,5 +338,17 @@ final class VendProductCommandHandler
             priceCents: $projection->priceCents(),
             recommendedSlotQuantity: $projection->recommendedSlotQuantity(),
         );
+    }
+
+    private function createPlanningInventory(CoinInventory $baseInventory, VendingSession $session): CoinInventory
+    {
+        $planningInventory = CoinInventory::restore(
+            CoinBundle::fromArray($baseInventory->availableCoins()->toArray()),
+            CoinBundle::fromArray($baseInventory->reservedCoins()->toArray()),
+        );
+
+        $planningInventory->deposit($session->insertedCoins());
+
+        return $planningInventory;
     }
 }
