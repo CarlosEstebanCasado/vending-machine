@@ -76,6 +76,7 @@ Full vending machine simulation: customer purchases and administrative managemen
 - `Money` and derivatives (`Coin`, `MoneyBalance`, `CoinBundle`): value objects representing accepted denominations and safe arithmetic.
 - `Inventory`/`Slot`: binds products to physical compartments, tracking max capacity and current quantity. The `restock_threshold` marks the quantity at which the slot should be considered low on product so operations can schedule a replenishment before it runs out.
 - `CoinInventory`: aggregate that maintains per-denomination counts and change-dispense/restock rules.
+  - The admin dashboard shows `insufficient change` when the backend cannot compose every multiple of 5 cts up to 95 cts (or the highest amount afforded by the available change coins). The heuristic rebuilds the change plan after each vend or manual adjustment so the flag always reflects the latest inventory snapshot.
 - `VendingSession`: tracks the ongoing interaction (inserted coins, selected product, transactional state); persisted from the first user action, closed with `completed`, `cancelled`, or `timeout`, linked to the resulting `Transaction`, and purged only through retention policies.
 - `Transaction`: aggregate for completed operations (sales, refunds, admin adjustments) with audit metadata.
 - `AdminUser`: aggregate for authenticated console accounts with credentials, permissions, and active token/session linkage.
