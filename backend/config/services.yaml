@@ -18,13 +18,19 @@ services:
             - '../src/VendingMachine/Application/DTO/'
             - '../src/Shared/Money/Domain/'
             - '../src/Shared/Application/DTO/'
-            - '../src/AdminPanel/User/Infrastructure/User/Document/'
-            - '../src/AdminPanel/User/UI/Http/Security/'
             - '../src/Kernel.php'
 
-    App\AdminPanel\User\Infrastructure\User\Document\:
-        resource: '../src/AdminPanel/User/Infrastructure/User/Document/'
-        public: false
+    App\AdminPanel\User\Domain\AdminUserRepository: '@App\AdminPanel\User\Infrastructure\Mongo\MongoAdminUserRepository'
+
+    App\AdminPanel\User\Application\Security\AdminAccessTokenGenerator: '@App\AdminPanel\User\Infrastructure\Token\JwtAdminTokenService'
+
+    App\AdminPanel\User\Application\Security\AdminAccessTokenValidator: '@App\AdminPanel\User\Infrastructure\Token\JwtAdminTokenService'
+
+    App\AdminPanel\User\Infrastructure\Token\JwtAdminTokenService:
+        arguments:
+            $secret: '%env(ADMIN_JWT_SECRET)%'
+            $ttlInSeconds: '%env(int:ADMIN_JWT_TTL)%'
+            $issuer: '%env(string:ADMIN_JWT_ISSUER)%'
 
     App\VendingMachine\Machine\Application\Service\MongoMachineStateProvider:
         arguments:

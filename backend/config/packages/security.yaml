@@ -4,14 +4,24 @@ security:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     providers:
+        admin_user_provider:
+            id: App\AdminPanel\User\Infrastructure\Security\AdminUserProvider
         users_in_memory: { memory: null }
     firewalls:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+        admin_api:
+            pattern: ^/api/admin
+            stateless: true
+            provider: admin_user_provider
+            custom_authenticators:
+                - App\AdminPanel\User\Infrastructure\Security\AdminJwtAuthenticator
+            entry_point: App\AdminPanel\User\Infrastructure\Security\AdminAuthenticationEntryPoint
         main:
             lazy: true
             provider: users_in_memory
+            security: false
 
             # activate different ways to authenticate
             # https://symfony.com/doc/current/security.html#the-firewall
@@ -22,8 +32,8 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        - { path: ^/api/admin/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/admin, roles: ROLE_ADMIN }
 
 when@test:
     security:

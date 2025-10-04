@@ -1,6 +1,7 @@
 COMPOSE ?= docker compose
+ENV ?= .env
 
-.PHONY: help install backend-install backend-lint backend-test backend-test-bc backend-ci backend-seed frontend-install frontend-lint frontend-test frontend-ci frontend-restart docker-up docker-down docker-build clean
+.PHONY: help install backend-install backend-lint backend-test backend-test-bc backend-ci backend-seed frontend-install frontend-lint frontend-test frontend-ci frontend-restart docker-up docker-down docker-build clean setup-admin-jwt
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -36,6 +37,9 @@ backend-ci: ## Run full backend quality checks inside Docker
 
 backend-seed: ## Seed Mongo projections for the vending machine
 	$(COMPOSE) --profile dev run --rm backend php bin/console app:seed-machine-state
+
+setup-admin-jwt: ## Generate admin JWT secret in the specified env file (ENV=.env by default)
+	./scripts/setup-admin-jwt.sh $(ENV)
 
 frontend-install: ## Install frontend dependencies (Node)
 	@if [ -f frontend/package.json ]; then \
