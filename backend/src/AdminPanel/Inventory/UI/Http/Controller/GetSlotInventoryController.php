@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\AdminPanel\Inventory\UI\Http\Controller;
 
-use App\AdminPanel\Inventory\Application\GetSlots\AdminGetSlotsQuery;
-use App\AdminPanel\Inventory\Application\GetSlots\AdminGetSlotsQueryHandler;
+use App\VendingMachine\Inventory\Application\GetSlots\AdminGetSlotsQuery;
+use App\VendingMachine\Inventory\Application\GetSlots\AdminGetSlotsQueryHandler;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -29,7 +29,7 @@ final class GetSlotInventoryController
             ], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        $result = ($this->handler)(new AdminGetSlotsQuery($machineId));
+        $result = $this->handler->handle(new AdminGetSlotsQuery($machineId));
 
         return new JsonResponse($this->serializeResult($result));
     }

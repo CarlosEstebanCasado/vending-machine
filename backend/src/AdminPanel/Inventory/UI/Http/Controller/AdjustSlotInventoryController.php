@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\AdminPanel\Inventory\UI\Http\Controller;
 
-use App\AdminPanel\Inventory\Application\AdjustSlotInventory\AdjustSlotInventoryOperation;
-use App\AdminPanel\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommand;
-use App\AdminPanel\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommandHandler;
+use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdjustSlotInventoryOperation;
+use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommand;
+use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommandHandler;
 use InvalidArgumentException;
 use JsonException;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -72,7 +72,7 @@ final class AdjustSlotInventoryController
                 productId: is_string($productId) ? $productId : null,
             );
 
-            ($this->handler)($command);
+            $this->handler->handle($command);
         } catch (InvalidArgumentException $exception) {
             return new JsonResponse([
                 'error' => ['message' => $exception->getMessage()]], JsonResponse::HTTP_BAD_REQUEST);

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\AdminPanel\Inventory\Application\GetSlots;
+namespace App\VendingMachine\Inventory\Application\GetSlots;
 
 use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
 use App\VendingMachine\Product\Domain\Product;
@@ -16,7 +16,7 @@ final class AdminGetSlotsQueryHandler
     ) {
     }
 
-    public function __invoke(AdminGetSlotsQuery $query): AdminSlotsInventoryResult
+    public function handle(AdminGetSlotsQuery $query): AdminSlotsInventoryResult
     {
         $slots = $this->slotRepository->findByMachine($query->machineId);
         $productMap = $this->buildProductMap();

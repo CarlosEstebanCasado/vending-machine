@@ -34,7 +34,7 @@ final class GetCoinInventoryController
         }
 
         try {
-            $result = ($this->handler)(new GetCoinInventoryQuery($machineId));
+            $result = $this->handler->handle(new GetCoinInventoryQuery($machineId));
         } catch (CoinInventoryNotFound $exception) {
             return new JsonResponse(
                 ['error' => ['message' => $exception->getMessage()]],

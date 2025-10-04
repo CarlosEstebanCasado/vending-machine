@@ -56,7 +56,7 @@ final class AdjustCoinInventoryCommandHandlerTest extends TestCase
 
         $command = new AdjustCoinInventoryCommand('machine-1', AdjustCoinInventoryOperation::Withdraw, [25 => 1]);
 
-        $handler($command);
+        $handler->handle($command);
 
         self::assertTrue($projection->insufficientChange());
     }
@@ -100,7 +100,7 @@ final class AdjustCoinInventoryCommandHandlerTest extends TestCase
 
         $command = new AdjustCoinInventoryCommand('machine-1', AdjustCoinInventoryOperation::Deposit, [10 => 2, 5 => 2]);
 
-        $handler($command);
+        $handler->handle($command);
 
         self::assertFalse($projection->insufficientChange());
     }

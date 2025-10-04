@@ -18,7 +18,7 @@ final class GetCoinInventoryQueryHandler
     ) {
     }
 
-    public function __invoke(GetCoinInventoryQuery $query): CoinInventoryResult
+    public function handle(GetCoinInventoryQuery $query): CoinInventoryResult
     {
         $snapshot = $this->coinInventoryRepository->find($query->machineId);
 

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\AdminPanel\Inventory\Application\AdjustSlotInventory;
+namespace App\Tests\Unit\VendingMachine\Inventory\Application\AdjustSlotInventory;
 
-use App\AdminPanel\Inventory\Application\AdjustSlotInventory\AdjustSlotInventoryOperation;
-use App\AdminPanel\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommand;
-use App\AdminPanel\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommandHandler;
 use App\Shared\Money\Domain\Money;
+use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdjustSlotInventoryOperation;
+use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommand;
+use App\VendingMachine\Inventory\Application\AdjustSlotInventory\AdminAdjustSlotInventoryCommandHandler;
 use App\VendingMachine\Inventory\Domain\InventorySlot;
 use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
 use App\VendingMachine\Inventory\Domain\ValueObject\InventorySlotId;
@@ -108,7 +108,7 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
             productId: 'product-1',
         );
 
-        $handler($command);
+        $handler->handle($command);
 
         self::assertSame(3, $projection->quantity());
         self::assertSame('product-1', $projection->productId());
@@ -135,7 +135,7 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Quantity must be greater than zero.');
 
-        $handler(new AdminAdjustSlotInventoryCommand(
+        $handler->handle(new AdminAdjustSlotInventoryCommand(
             machineId: 'machine-1',
             slotCode: '11',
             operation: AdjustSlotInventoryOperation::Restock,
@@ -164,7 +164,7 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Slot "11" not found for machine "machine-1".');
 
-        $handler(new AdminAdjustSlotInventoryCommand(
+        $handler->handle(new AdminAdjustSlotInventoryCommand(
             machineId: 'machine-1',
             slotCode: '11',
             operation: AdjustSlotInventoryOperation::Restock,
@@ -199,7 +199,7 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Product id must be provided when restocking a slot.');
 
-        $handler(new AdminAdjustSlotInventoryCommand(
+        $handler->handle(new AdminAdjustSlotInventoryCommand(
             machineId: 'machine-1',
             slotCode: '11',
             operation: AdjustSlotInventoryOperation::Restock,
@@ -236,7 +236,7 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Product not found.');
 
-        $handler(new AdminAdjustSlotInventoryCommand(
+        $handler->handle(new AdminAdjustSlotInventoryCommand(
             machineId: 'machine-1',
             slotCode: '11',
             operation: AdjustSlotInventoryOperation::Restock,
@@ -286,7 +286,7 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Slot already assigned to a different product.');
 
-        $handler(new AdminAdjustSlotInventoryCommand(
+        $handler->handle(new AdminAdjustSlotInventoryCommand(
             machineId: 'machine-1',
             slotCode: '11',
             operation: AdjustSlotInventoryOperation::Restock,
@@ -327,7 +327,7 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Slot cannot be restocked while it is reserved by an active session.');
 
-        $handler(new AdminAdjustSlotInventoryCommand(
+        $handler->handle(new AdminAdjustSlotInventoryCommand(
             machineId: 'machine-1',
             slotCode: '11',
             operation: AdjustSlotInventoryOperation::Restock,
@@ -368,7 +368,7 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Slot cannot be adjusted while it is reserved by an active session.');
 
-        $handler(new AdminAdjustSlotInventoryCommand(
+        $handler->handle(new AdminAdjustSlotInventoryCommand(
             machineId: 'machine-1',
             slotCode: '11',
             operation: AdjustSlotInventoryOperation::Withdraw,
@@ -441,7 +441,7 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
             productId: null,
         );
 
-        $handler($command);
+        $handler->handle($command);
 
         self::assertSame(0, $projection->quantity());
         self::assertNull($projection->productId());

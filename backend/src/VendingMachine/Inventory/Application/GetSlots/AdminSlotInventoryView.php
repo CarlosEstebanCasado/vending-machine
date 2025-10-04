@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\AdminPanel\Inventory\Application\GetSlots;
+namespace App\VendingMachine\Inventory\Application\GetSlots;
 
 final readonly class AdminSlotInventoryView
 {

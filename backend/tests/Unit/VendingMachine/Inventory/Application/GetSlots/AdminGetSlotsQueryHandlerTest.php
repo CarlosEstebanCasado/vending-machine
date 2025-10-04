@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\AdminPanel\Inventory\Application\GetSlots;
+namespace App\Tests\Unit\VendingMachine\Inventory\Application\GetSlots;
 
-use App\AdminPanel\Inventory\Application\GetSlots\AdminGetSlotsQuery;
-use App\AdminPanel\Inventory\Application\GetSlots\AdminGetSlotsQueryHandler;
-use App\AdminPanel\Inventory\Application\GetSlots\AdminSlotsInventoryResult;
 use App\Shared\Money\Domain\Money;
+use App\VendingMachine\Inventory\Application\GetSlots\AdminGetSlotsQuery;
+use App\VendingMachine\Inventory\Application\GetSlots\AdminGetSlotsQueryHandler;
+use App\VendingMachine\Inventory\Application\GetSlots\AdminSlotsInventoryResult;
 use App\VendingMachine\Inventory\Domain\InventorySlot;
 use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
 use App\VendingMachine\Inventory\Domain\ValueObject\InventorySlotId;
@@ -61,7 +61,7 @@ final class AdminGetSlotsQueryHandlerTest extends TestCase
 
         $handler = new AdminGetSlotsQueryHandler($slotRepository, $productRepository);
 
-        $result = $handler(new AdminGetSlotsQuery('machine-1'));
+        $result = $handler->handle(new AdminGetSlotsQuery('machine-1'));
 
         self::assertInstanceOf(AdminSlotsInventoryResult::class, $result);
         self::assertSame('machine-1', $result->machineId);
