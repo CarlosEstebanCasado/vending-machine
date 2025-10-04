@@ -35,8 +35,14 @@ final class AdminAdjustSlotInventoryCommandHandler
             throw new InvalidArgumentException(sprintf('Slot "%s" not found for machine "%s".', $command->slotCode, $command->machineId));
         }
 
-        if (AdjustSlotInventoryOperation::Restock === $command->operation && $slot->status()->isReserved()) {
-            throw new InvalidArgumentException('Slot cannot be restocked while it is reserved by an active session.');
+        if ($slot->status()->isReserved()) {
+            if (AdjustSlotInventoryOperation::Restock === $command->operation) {
+                throw new InvalidArgumentException('Slot cannot be restocked while it is reserved by an active session.');
+            }
+
+            if (AdjustSlotInventoryOperation::Withdraw === $command->operation) {
+                throw new InvalidArgumentException('Slot cannot be adjusted while it is reserved by an active session.');
+            }
         }
 
         $product = null;

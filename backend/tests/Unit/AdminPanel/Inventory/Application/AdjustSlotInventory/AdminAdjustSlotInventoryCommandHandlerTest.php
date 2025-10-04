@@ -336,6 +336,47 @@ final class AdminAdjustSlotInventoryCommandHandlerTest extends TestCase
         ));
     }
 
+    public function testWithdrawFailsWhenSlotReserved(): void
+    {
+        $slot = InventorySlot::restore(
+            InventorySlotId::fromString('slot-1'),
+            SlotCode::fromString('11'),
+            SlotCapacity::fromInt(10),
+            SlotQuantity::fromInt(3),
+            RestockThreshold::fromInt(1),
+            SlotStatus::Reserved,
+            ProductId::fromString('product-1'),
+        );
+
+        $slotRepository = $this->createMock(InventorySlotRepository::class);
+        $slotRepository->expects(self::once())
+            ->method('findByMachineAndCode')
+            ->with('machine-1', self::callback(static fn (SlotCode $code): bool => '11' === $code->value()))
+            ->willReturn($slot);
+        $slotRepository->expects(self::never())
+            ->method('save');
+
+        $productRepository = $this->createMock(ProductRepository::class);
+        $productRepository->expects(self::never())->method('find');
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->expects(self::never())->method('getRepository');
+        $documentManager->expects(self::never())->method('flush');
+
+        $handler = new AdminAdjustSlotInventoryCommandHandler($slotRepository, $productRepository, $documentManager);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Slot cannot be adjusted while it is reserved by an active session.');
+
+        $handler(new AdminAdjustSlotInventoryCommand(
+            machineId: 'machine-1',
+            slotCode: '11',
+            operation: AdjustSlotInventoryOperation::Withdraw,
+            quantity: 1,
+            productId: 'product-1',
+        ));
+    }
+
     public function testWithdrawClearsSlotWhenEmpty(): void
     {
         $slot = InventorySlot::restore(

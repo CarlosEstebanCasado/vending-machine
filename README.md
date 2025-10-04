@@ -38,8 +38,9 @@ Full vending machine simulation: customer purchases and administrative managemen
    ```
 6. Access the services:
    - SPA: http://vendingmachine.test
-   - API: http://vendingmachine.test/api/ping
-   - Admin login endpoint: POST http://vendingmachine.test/api/admin/login
+   - API: http://vendingmachine.test/api/health
+   - MongoDB: `mongodb://localhost:27017/vending_machine`
+   - Admin login endpoint: http://vendingmachine.test/admin
      - Default credentials (seed data): `admin@vendingmachine.test` / `admin-password`
 
 7. Stop the stack:

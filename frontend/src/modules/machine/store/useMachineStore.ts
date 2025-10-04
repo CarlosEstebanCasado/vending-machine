@@ -177,7 +177,17 @@ export const useMachineStore = defineStore('machine', {
           slotCode,
         })
 
-        if (this.machineState) {
+        let refreshedState: MachineState | null = null
+
+        try {
+          refreshedState = await getMachineState()
+        } catch (refreshError) {
+          console.error('Failed to refresh machine state after product selection', refreshError)
+        }
+
+        if (refreshedState) {
+          this.machineState = refreshedState
+        } else if (this.machineState) {
           this.machineState = {
             ...this.machineState,
             machineId: result.machineId,
@@ -289,7 +299,17 @@ export const useMachineStore = defineStore('machine', {
           sessionId: activeSession.id,
         })
 
-        if (this.machineState) {
+        let refreshedState: MachineState | null = null
+
+        try {
+          refreshedState = await getMachineState()
+        } catch (refreshError) {
+          console.error('Failed to refresh machine state after clearing selection', refreshError)
+        }
+
+        if (refreshedState) {
+          this.machineState = refreshedState
+        } else if (this.machineState) {
           this.machineState = {
             ...this.machineState,
             machineId: result.machineId,

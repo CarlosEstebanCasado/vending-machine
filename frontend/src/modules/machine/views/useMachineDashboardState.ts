@@ -78,7 +78,14 @@ export function useMachineDashboardState() {
   const selectedProduct = computed(() => {
     const product = rawSelection.value
 
-    if (!product || !product.productId || product.status !== 'available') {
+    if (!product || !product.productId) {
+      return null
+    }
+
+    const isReservedByCurrentSession =
+      product.status === 'reserved' && session.value?.selectedSlotCode === product.slotCode
+
+    if (product.status !== 'available' && !isReservedByCurrentSession) {
       return null
     }
 

@@ -68,8 +68,11 @@ frontend-ci: ## Run full frontend quality checks inside Docker
 frontend-restart: ## Restart the frontend container (stop + start)
 	$(COMPOSE) --profile dev restart frontend
 
-docker-up: ## Start the development stack (backend, frontend, mongo, redis)
+docker-build-up: ## Start the development stack (backend, frontend, mongo, redis)
 	$(COMPOSE) --profile dev up --build -d
+
+docker-up: ## Start the development stack (backend, frontend, mongo, redis)
+	$(COMPOSE) --profile dev up -d
 
 docker-down: ## Stop the development stack
 	$(COMPOSE) --profile dev down
