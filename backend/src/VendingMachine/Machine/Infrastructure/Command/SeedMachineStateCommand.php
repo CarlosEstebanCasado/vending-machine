@@ -140,21 +140,23 @@ final class SeedMachineStateCommand extends Command
     private function seedSlots(): void
     {
         $slotDefinitions = [
-            ['code' => '11', 'capacity' => 10, 'quantity' => 6, 'recommended' => 8, 'product' => 'water'],
-            ['code' => '12', 'capacity' => 10, 'quantity' => 2, 'recommended' => 8, 'product' => 'soda'],
-            ['code' => '13', 'capacity' => 12, 'quantity' => 9, 'recommended' => 9, 'product' => 'juice'],
-            ['code' => '14', 'capacity' => 8, 'quantity' => 4, 'recommended' => 6, 'product' => 'water'],
-            ['code' => '15', 'capacity' => 10, 'quantity' => 7, 'recommended' => 8, 'product' => 'soda'],
-            ['code' => '16', 'capacity' => 10, 'quantity' => 6, 'recommended' => 8, 'product' => 'juice'],
-            ['code' => '17', 'capacity' => 8, 'quantity' => 0, 'recommended' => 6, 'product' => null],
-            ['code' => '18', 'capacity' => 10, 'quantity' => 5, 'recommended' => 8, 'product' => 'water'],
-            ['code' => '19', 'capacity' => 12, 'quantity' => 3, 'recommended' => 10, 'product' => 'soda'],
+            ['code' => '11', 'quantity' => 6, 'recommended' => 8, 'product' => 'water'],
+            ['code' => '12', 'quantity' => 2, 'recommended' => 8, 'product' => 'soda'],
+            ['code' => '13', 'quantity' => 9, 'recommended' => 9, 'product' => 'juice'],
+            ['code' => '14', 'quantity' => 4, 'recommended' => 6, 'product' => 'water'],
+            ['code' => '15', 'quantity' => 7, 'recommended' => 8, 'product' => 'soda'],
+            ['code' => '16', 'quantity' => 6, 'recommended' => 8, 'product' => 'juice'],
+            ['code' => '17', 'quantity' => 0, 'recommended' => 6, 'product' => null],
+            ['code' => '18', 'quantity' => 5, 'recommended' => 8, 'product' => 'water'],
+            ['code' => '19', 'quantity' => 3, 'recommended' => 10, 'product' => 'soda'],
         ];
 
         foreach ($slotDefinitions as $definition) {
+            $capacity = 10;
             $productId = null;
             $productName = null;
             $priceCents = null;
+            $status = SlotStatus::Disabled;
 
             if (null !== $definition['product']) {
                 $productId = $this->productId($definition['product']);
@@ -170,18 +172,21 @@ final class SeedMachineStateCommand extends Command
                     'juice' => 100,
                     default => null,
                 };
+                $status = SlotStatus::Available;
             }
 
-            $lowStockThreshold = max(1, (int) floor($definition['recommended'] / 2));
-            $lowStock = $definition['quantity'] <= $lowStockThreshold;
+            $lowStockThreshold = SlotStatus::Available === $status
+                ? max(1, (int) floor($definition['recommended'] / 2))
+                : 0;
+            $lowStock = SlotStatus::Available === $status && $definition['quantity'] <= $lowStockThreshold;
 
             $slotDocument = new SlotProjectionDocument(
                 machineId: $this->machineId,
                 slotCode: $definition['code'],
-                capacity: $definition['capacity'],
+                capacity: $capacity,
                 recommendedSlotQuantity: $definition['recommended'],
                 quantity: $definition['quantity'],
-                status: SlotStatus::Available->value,
+                status: $status->value,
                 lowStock: $lowStock,
                 productId: $productId,
                 productName: $productName,
@@ -193,10 +198,10 @@ final class SeedMachineStateCommand extends Command
             $inventorySlot = new InventorySlotDocument(
                 machineId: $this->machineId,
                 code: $definition['code'],
-                capacity: $definition['capacity'],
+                capacity: $capacity,
                 quantity: $definition['quantity'],
                 restockThreshold: $lowStockThreshold,
-                status: SlotStatus::Available->value,
+                status: $status->value,
                 productId: $productId,
             );
 
