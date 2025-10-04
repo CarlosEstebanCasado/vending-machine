@@ -22,17 +22,7 @@ final class ClearSelectionCommandHandler
 
     public function handle(ClearSelectionCommand $command): StartSessionResult
     {
-        /** @var ActiveSessionDocument|null $document */
-        $document = $this->documentManager->find(ActiveSessionDocument::class, $command->machineId);
-
-        if (null === $document || null === $document->sessionId()) {
-            throw new DomainException('No active session found for this machine.');
-        }
-
-        if ($document->sessionId() !== $command->sessionId) {
-            throw new DomainException('The provided session id does not match the active session.');
-        }
-
+        $document = $this->loadActiveSession($command);
         $previousSlotCode = $document->selectedSlotCode();
 
         $session = $document->toVendingSession();
@@ -40,9 +30,7 @@ final class ClearSelectionCommandHandler
 
         $document->applySession($session, null);
 
-        if (null !== $previousSlotCode) {
-            $this->releaseSlot($command->machineId, $previousSlotCode);
-        }
+        $this->releasePreviousSlot($command->machineId, $previousSlotCode);
 
         $this->documentManager->flush();
 
@@ -54,6 +42,31 @@ final class ClearSelectionCommandHandler
             selectedProductId: $session->selectedProductId()?->value(),
             selectedSlotCode: $document->selectedSlotCode(),
         );
+    }
+
+    private function loadActiveSession(ClearSelectionCommand $command): ActiveSessionDocument
+    {
+        /** @var ActiveSessionDocument|null $document */
+        $document = $this->documentManager->find(ActiveSessionDocument::class, $command->machineId);
+
+        if (null === $document || null === $document->sessionId()) {
+            throw new DomainException('No active session found for this machine.');
+        }
+
+        if ($document->sessionId() !== $command->sessionId) {
+            throw new DomainException('The provided session id does not match the active session.');
+        }
+
+        return $document;
+    }
+
+    private function releasePreviousSlot(string $machineId, ?string $slotCode): void
+    {
+        if (null === $slotCode) {
+            return;
+        }
+
+        $this->releaseSlot($machineId, $slotCode);
     }
 
     private function releaseSlot(string $machineId, string $slotCode): void

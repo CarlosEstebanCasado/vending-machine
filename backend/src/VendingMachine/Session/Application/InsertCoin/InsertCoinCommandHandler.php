@@ -20,22 +20,8 @@ final class InsertCoinCommandHandler
 
     public function handle(InsertCoinCommand $command): StartSessionResult
     {
-        /** @var ActiveSessionDocument|null $document */
-        $document = $this->documentManager->find(ActiveSessionDocument::class, $command->machineId);
-
-        if (null === $document || null === $document->sessionId()) {
-            throw new DomainException('No active session found for this machine.');
-        }
-
-        if ($document->sessionId() !== $command->sessionId) {
-            throw new DomainException('The provided session id does not match the active session.');
-        }
-
-        try {
-            $denomination = CoinDenomination::from($command->denomination);
-        } catch (ValueError $exception) {
-            throw new DomainException('Unsupported coin denomination.', 0, $exception);
-        }
+        $document = $this->loadActiveSession($command);
+        $denomination = $this->resolveDenomination($command->denomination);
 
         $session = $document->toVendingSession();
         $session->insertCoin($denomination);
@@ -52,5 +38,30 @@ final class InsertCoinCommandHandler
             selectedProductId: $session->selectedProductId()?->value(),
             selectedSlotCode: $document->selectedSlotCode(),
         );
+    }
+
+    private function loadActiveSession(InsertCoinCommand $command): ActiveSessionDocument
+    {
+        /** @var ActiveSessionDocument|null $document */
+        $document = $this->documentManager->find(ActiveSessionDocument::class, $command->machineId);
+
+        if (null === $document || null === $document->sessionId()) {
+            throw new DomainException('No active session found for this machine.');
+        }
+
+        if ($document->sessionId() !== $command->sessionId) {
+            throw new DomainException('The provided session id does not match the active session.');
+        }
+
+        return $document;
+    }
+
+    private function resolveDenomination(int $value): CoinDenomination
+    {
+        try {
+            return CoinDenomination::from($value);
+        } catch (ValueError $exception) {
+            throw new DomainException('Unsupported coin denomination.', 0, $exception);
+        }
     }
 }
