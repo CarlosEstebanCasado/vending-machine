@@ -42,6 +42,8 @@ services:
         bind:
             $defaultMachineId: '%app.machine_id%'
 
+    App\AdminPanel\Coin\Domain\CoinReserveRepository: '@App\AdminPanel\Coin\Infrastructure\Mongo\MongoCoinReserveRepository'
+
     App\VendingMachine\Machine\Application\Service\MongoMachineStateProvider:
         arguments:
             $machineId: '%app.machine_id%'

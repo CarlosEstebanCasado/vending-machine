@@ -47,6 +47,77 @@
             </span>
             <small>Updated {{ relativeUpdatedAt }}</small>
           </footer>
+
+          <section class="coin-adjustment">
+            <header class="coin-adjustment__header">
+              <h3>Adjust Coin Inventory</h3>
+              <p>Record deposits or withdrawals to keep reserves in sync.</p>
+            </header>
+
+            <form class="coin-adjustment__form" @submit.prevent="submitCoinAdjustment">
+              <fieldset class="coin-adjustment__operation" :disabled="adjustmentSubmitting">
+                <legend class="visually-hidden">Select adjustment type</legend>
+
+                <label
+                  class="coin-adjustment__operation-option"
+                  :class="{ 'coin-adjustment__operation-option--active': adjustmentOperation === 'deposit' }"
+                >
+                  <input
+                    v-model="adjustmentOperation"
+                    type="radio"
+                    name="coin-adjustment-operation"
+                    value="deposit"
+                    :disabled="adjustmentSubmitting"
+                  />
+                  <span>Deposit</span>
+                </label>
+
+                <label
+                  class="coin-adjustment__operation-option"
+                  :class="{ 'coin-adjustment__operation-option--active': adjustmentOperation === 'withdraw' }"
+                >
+                  <input
+                    v-model="adjustmentOperation"
+                    type="radio"
+                    name="coin-adjustment-operation"
+                    value="withdraw"
+                    :disabled="adjustmentSubmitting"
+                  />
+                  <span>Withdraw</span>
+                </label>
+              </fieldset>
+
+              <div class="coin-adjustment__grid">
+                <label
+                  v-for="denomination in DENOMINATIONS"
+                  :key="denomination"
+                  class="coin-adjustment__input"
+                >
+                  <span>{{ formatCoin(denomination) }}</span>
+                  <input
+                    v-model.number="adjustmentValues[denomination]"
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputmode="numeric"
+                    :disabled="adjustmentSubmitting"
+                    placeholder="0"
+                  />
+                </label>
+              </div>
+
+              <p v-if="adjustmentError" class="coin-adjustment__feedback coin-adjustment__feedback--error">
+                {{ adjustmentError }}
+              </p>
+              <p v-else-if="adjustmentSuccess" class="coin-adjustment__feedback coin-adjustment__feedback--success">
+                {{ adjustmentSuccess }}
+              </p>
+
+              <button class="coin-adjustment__submit" type="submit" :disabled="adjustmentSubmitting">
+                {{ adjustmentSubmitting ? 'Saving...' : submitLabel }}
+              </button>
+            </form>
+          </section>
         </div>
       </section>
     </section>
@@ -54,9 +125,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCoinInventory, type CoinInventoryResponse } from '@/modules/admin/api/getCoinInventory'
+import { updateCoinInventory, type CoinInventoryOperation } from '@/modules/admin/api/updateCoinInventory'
 import { useAdminAuthStore } from '@/modules/admin/store/useAdminAuthStore'
 
 const router = useRouter()
@@ -80,6 +152,43 @@ const relativeUpdatedAt = computed(() => {
   return new Date(coinInventory.value.updatedAt).toLocaleString()
 })
 
+const DENOMINATIONS = [100, 25, 10, 5] as const
+
+const adjustmentOperation = ref<CoinInventoryOperation>('deposit')
+const adjustmentValues = reactive<Record<number, number>>(
+  DENOMINATIONS.reduce((accumulator, denomination) => {
+    accumulator[denomination] = 0
+    return accumulator
+  }, {} as Record<number, number>),
+)
+const adjustmentSubmitting = ref(false)
+const adjustmentError = ref<string | null>(null)
+const adjustmentSuccess = ref<string | null>(null)
+
+const availableByDenomination = computed<Record<number, number>>(() => {
+  const lookup: Record<number, number> = {}
+
+  for (const balance of coinBalances.value) {
+    lookup[balance.denomination] = balance.available
+  }
+
+  return lookup
+})
+
+const submitLabel = computed(() =>
+  adjustmentOperation.value === 'deposit' ? 'Record Deposit' : 'Record Withdrawal',
+)
+
+watch(adjustmentOperation, () => {
+  adjustmentError.value = null
+  adjustmentSuccess.value = null
+})
+
+watch(adjustmentValues, () => {
+  adjustmentError.value = null
+  adjustmentSuccess.value = null
+}, { deep: true })
+
 onMounted(() => {
   if (!authStore.isAuthenticated) {
     void router.replace({ name: 'admin.login' })
@@ -94,8 +203,13 @@ function handleLogout(): void {
   void router.replace({ name: 'machine.dashboard' })
 }
 
-async function loadCoinInventory(): Promise<void> {
-  coinLoading.value = true
+async function loadCoinInventory(options: { withSpinner?: boolean } = {}): Promise<void> {
+  const { withSpinner = true } = options
+
+  if (withSpinner) {
+    coinLoading.value = true
+  }
+
   coinError.value = null
 
   try {
@@ -105,6 +219,70 @@ async function loadCoinInventory(): Promise<void> {
     coinError.value = error instanceof Error ? error.message : 'Unable to load coin inventory.'
   } finally {
     coinLoading.value = false
+  }
+}
+
+function resetAdjustmentValues(): void {
+  DENOMINATIONS.forEach((denomination) => {
+    adjustmentValues[denomination] = 0
+  })
+}
+
+async function submitCoinAdjustment(): Promise<void> {
+  adjustmentError.value = null
+  adjustmentSuccess.value = null
+
+  const normalizedEntries: Array<[number, number]> = []
+
+  DENOMINATIONS.forEach((denomination) => {
+    const rawValue = adjustmentValues[denomination] ?? 0
+    const normalized = Number.isFinite(rawValue) ? Math.max(0, Math.floor(rawValue)) : 0
+
+    adjustmentValues[denomination] = normalized
+
+    if (normalized > 0) {
+      normalizedEntries.push([denomination, normalized])
+    }
+  })
+
+  if (normalizedEntries.length === 0) {
+    adjustmentError.value = 'Specify at least one denomination with a positive quantity.'
+    return
+  }
+
+  if (adjustmentOperation.value === 'withdraw') {
+    for (const [denomination, quantity] of normalizedEntries) {
+      const available = availableByDenomination.value[denomination] ?? 0
+
+      if (quantity > available) {
+        adjustmentError.value = `Cannot withdraw more than available for ${formatCoin(denomination)}.`
+        return
+      }
+    }
+  }
+
+  adjustmentSubmitting.value = true
+
+  try {
+    const denominationsPayload: Record<number, number> = {}
+
+    for (const [denomination, quantity] of normalizedEntries) {
+      denominationsPayload[denomination] = quantity
+    }
+
+    await updateCoinInventory({
+      operation: adjustmentOperation.value,
+      denominations: denominationsPayload,
+    })
+
+    await loadCoinInventory({ withSpinner: false })
+    resetAdjustmentValues()
+    adjustmentSuccess.value = 'Coin inventory updated.'
+  } catch (error) {
+    console.error('Failed to update coin inventory', error)
+    adjustmentError.value = error instanceof Error ? error.message : 'Unable to update coin inventory.'
+  } finally {
+    adjustmentSubmitting.value = false
   }
 }
 
@@ -231,6 +409,149 @@ function formatCoin(value: number): string {
 
 .coin-table__alert {
   color: #fbbf24;
+}
+
+.coin-adjustment {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.coin-adjustment__header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.coin-adjustment__header p {
+  margin: 0.35rem 0 0;
+  color: #9fb7ff;
+  font-size: 0.9rem;
+}
+
+.coin-adjustment__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.coin-adjustment__operation {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.coin-adjustment__operation-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.65);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+
+.coin-adjustment__operation-option--active {
+  border-color: rgba(56, 189, 248, 0.8);
+  background: rgba(14, 165, 233, 0.18);
+}
+
+.coin-adjustment__operation-option input {
+  accent-color: #38bdf8;
+}
+
+.coin-adjustment__grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.coin-adjustment__input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: rgba(17, 24, 39, 0.6);
+  border-radius: 12px;
+  padding: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.coin-adjustment__input span {
+  font-size: 0.9rem;
+  color: #cbd5f5;
+}
+
+.coin-adjustment__input input {
+  background: rgba(12, 20, 35, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  color: #f8fafc;
+  font-size: 1rem;
+}
+
+.coin-adjustment__input input:disabled {
+  opacity: 0.6;
+}
+
+.coin-adjustment__feedback {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.coin-adjustment__feedback--error {
+  color: #fecaca;
+}
+
+.coin-adjustment__feedback--success {
+  color: #bbf7d0;
+}
+
+.coin-adjustment__submit {
+  align-self: flex-start;
+  padding: 0.65rem 1.4rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(59, 130, 246, 0.45));
+  color: #f8fafc;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.coin-adjustment__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px rgba(56, 189, 248, 0.35);
+}
+
+.coin-adjustment__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+  transform: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .admin-dashboard__logout {
