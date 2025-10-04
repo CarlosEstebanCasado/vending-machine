@@ -32,3 +32,10 @@ admin_coin_controllers:
         namespace: App\AdminPanel\Coin\UI\Http\Controller
     type: attribute
     prefix: /api/admin
+
+admin_inventory_controllers:
+    resource:
+        path: ../src/AdminPanel/Inventory/UI/Http/Controller/
+        namespace: App\AdminPanel\Inventory\UI\Http\Controller
+    type: attribute
+    prefix: /api/admin

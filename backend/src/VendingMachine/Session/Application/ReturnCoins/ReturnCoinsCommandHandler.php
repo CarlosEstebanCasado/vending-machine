@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Session\Application\ReturnCoins;
 
+use App\VendingMachine\Inventory\Domain\InventorySlotRepository;
+use App\VendingMachine\Inventory\Domain\ValueObject\SlotCode;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
+use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use DomainException;
 
 final class ReturnCoinsCommandHandler
 {
-    public function __construct(private readonly DocumentManager $documentManager)
-    {
+    public function __construct(
+        private readonly DocumentManager $documentManager,
+        private readonly InventorySlotRepository $slotRepository,
+    ) {
     }
 
     public function handle(ReturnCoinsCommand $command): ReturnCoinsResult
@@ -27,10 +32,16 @@ final class ReturnCoinsCommandHandler
             throw new DomainException('The provided session id does not match the active session.');
         }
 
+        $previousSlotCode = $document->selectedSlotCode();
+
         $session = $document->toVendingSession();
         $returnedCoins = $session->returnCoins();
 
         $document->applySession($session);
+
+        if (null !== $previousSlotCode) {
+            $this->releaseSlot($command->machineId, $previousSlotCode);
+        }
 
         $this->documentManager->flush();
 
@@ -42,6 +53,46 @@ final class ReturnCoinsCommandHandler
             selectedProductId: $session->selectedProductId()?->value(),
             selectedSlotCode: $document->selectedSlotCode(),
             returnedCoins: $returnedCoins->toArray(),
+        );
+    }
+
+    private function releaseSlot(string $machineId, string $slotCode): void
+    {
+        $slot = $this->slotRepository->findByMachineAndCode($machineId, SlotCode::fromString($slotCode));
+
+        if (null === $slot) {
+            return;
+        }
+
+        if ($slot->quantity()->isZero()) {
+            $slot->disable();
+        } else {
+            $slot->markAvailable();
+        }
+
+        $this->slotRepository->save($slot, $machineId);
+
+        $repository = $this->documentManager->getRepository(SlotProjectionDocument::class);
+
+        /** @var SlotProjectionDocument|null $projection */
+        $projection = $repository->findOneBy([
+            'machineId' => $machineId,
+            'slotCode' => $slotCode,
+        ]);
+
+        if (null === $projection) {
+            return;
+        }
+
+        $projection->syncFromInventory(
+            slotQuantity: $slot->quantity()->value(),
+            slotCapacity: $slot->capacity()->value(),
+            status: $slot->status()->value,
+            lowStock: $slot->needsRestock(),
+            productId: $slot->productId()?->value(),
+            productName: $projection->productName(),
+            priceCents: $projection->priceCents(),
+            recommendedSlotQuantity: $projection->recommendedSlotQuantity(),
         );
     }
 }

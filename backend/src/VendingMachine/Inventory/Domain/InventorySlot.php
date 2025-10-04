@@ -132,6 +132,9 @@ final class InventorySlot
         $this->ensureQuantityNotGreaterThanCapacity($newQuantity, $this->capacity);
 
         $this->quantity = $newQuantity;
+        if ($this->status->isDisabled()) {
+            $this->status = SlotStatus::Available;
+        }
     }
 
     public function dispense(int $units = 1): void
@@ -145,6 +148,15 @@ final class InventorySlot
         }
 
         $this->quantity = $this->quantity->subtract($units);
+    }
+
+    public function removeStock(int $units): void
+    {
+        $this->quantity = $this->quantity->subtract($units);
+
+        if ($this->quantity->isZero()) {
+            $this->status = SlotStatus::Disabled;
+        }
     }
 
     public function markReserved(): void

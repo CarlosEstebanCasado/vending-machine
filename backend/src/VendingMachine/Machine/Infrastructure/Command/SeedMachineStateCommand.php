@@ -8,10 +8,13 @@ use App\AdminPanel\User\Infrastructure\Mongo\Document\AdminUserDocument;
 use App\VendingMachine\CoinInventory\Domain\ValueObject\CoinDenomination;
 use App\VendingMachine\CoinInventory\Infrastructure\Mongo\Document\CoinInventoryDocument;
 use App\VendingMachine\Inventory\Domain\ValueObject\SlotStatus;
+use App\VendingMachine\Inventory\Infrastructure\Mongo\Document\InventorySlotDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\ActiveSessionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\CoinInventoryProjectionDocument;
 use App\VendingMachine\Machine\Infrastructure\Mongo\Document\SlotProjectionDocument;
 use App\VendingMachine\Product\Domain\ValueObject\ProductId;
+use App\VendingMachine\Product\Domain\ValueObject\ProductStatus;
+use App\VendingMachine\Product\Infrastructure\Mongo\Document\ProductDocument;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -44,6 +47,7 @@ final class SeedMachineStateCommand extends Command
 
         $this->purgeExistingData();
 
+        $this->seedProducts();
         $this->seedSlots();
         $this->seedCoinInventory();
         $this->seedAdminUser();
@@ -80,123 +84,128 @@ final class SeedMachineStateCommand extends Command
             ->field('email')->equals('admin@vendingmachine.test')
             ->getQuery()
             ->execute();
+
+        $this->documentManager->createQueryBuilder(ProductDocument::class)
+            ->remove()
+            ->getQuery()
+            ->execute();
+
+        $this->documentManager->createQueryBuilder(InventorySlotDocument::class)
+            ->remove()
+            ->field('machineId')->equals($this->machineId)
+            ->getQuery()
+            ->execute();
+    }
+
+    private function seedProducts(): void
+    {
+        $products = [
+            [
+                'id' => $this->productId('water'),
+                'sku' => 'WATER-001',
+                'name' => 'Water',
+                'price' => 65,
+                'recommended' => 8,
+            ],
+            [
+                'id' => $this->productId('soda'),
+                'sku' => 'SODA-001',
+                'name' => 'Soda',
+                'price' => 150,
+                'recommended' => 8,
+            ],
+            [
+                'id' => $this->productId('juice'),
+                'sku' => 'JUICE-001',
+                'name' => 'Orange Juice',
+                'price' => 100,
+                'recommended' => 8,
+            ],
+        ];
+
+        foreach ($products as $product) {
+            $document = new ProductDocument(
+                id: $product['id'],
+                sku: $product['sku'],
+                name: $product['name'],
+                priceCents: $product['price'],
+                status: ProductStatus::Active->value,
+                recommendedSlotQuantity: $product['recommended'],
+            );
+
+            $this->documentManager->persist($document);
+        }
     }
 
     private function seedSlots(): void
     {
-        $slots = [
-            new SlotProjectionDocument(
-                machineId: $this->machineId,
-                slotCode: '11',
-                capacity: 10,
-                recommendedSlotQuantity: 8,
-                quantity: 6,
-                status: SlotStatus::Available->value,
-                lowStock: false,
-                productId: $this->productId('water'),
-                productName: 'Water',
-                priceCents: 65,
-            ),
-            new SlotProjectionDocument(
-                machineId: $this->machineId,
-                slotCode: '12',
-                capacity: 10,
-                recommendedSlotQuantity: 8,
-                quantity: 2,
-                status: SlotStatus::Available->value,
-                lowStock: true,
-                productId: $this->productId('soda'),
-                productName: 'Soda',
-                priceCents: 150,
-            ),
-            new SlotProjectionDocument(
-                machineId: $this->machineId,
-                slotCode: '13',
-                capacity: 12,
-                recommendedSlotQuantity: 9,
-                quantity: 9,
-                status: SlotStatus::Available->value,
-                lowStock: false,
-                productId: $this->productId('juice'),
-                productName: 'Orange Juice',
-                priceCents: 100,
-            ),
-            new SlotProjectionDocument(
-                machineId: $this->machineId,
-                slotCode: '14',
-                capacity: 8,
-                recommendedSlotQuantity: 6,
-                quantity: 4,
-                status: SlotStatus::Available->value,
-                lowStock: true,
-                productId: $this->productId('water'),
-                productName: 'Water',
-                priceCents: 65,
-            ),
-            new SlotProjectionDocument(
-                machineId: $this->machineId,
-                slotCode: '15',
-                capacity: 10,
-                recommendedSlotQuantity: 8,
-                quantity: 7,
-                status: SlotStatus::Available->value,
-                lowStock: false,
-                productId: $this->productId('soda'),
-                productName: 'Soda',
-                priceCents: 150,
-            ),
-            new SlotProjectionDocument(
-                machineId: $this->machineId,
-                slotCode: '16',
-                capacity: 10,
-                recommendedSlotQuantity: 8,
-                quantity: 6,
-                status: SlotStatus::Available->value,
-                lowStock: false,
-                productId: $this->productId('juice'),
-                productName: 'Orange Juice',
-                priceCents: 100,
-            ),
-            new SlotProjectionDocument(
-                machineId: $this->machineId,
-                slotCode: '17',
-                capacity: 8,
-                recommendedSlotQuantity: 6,
-                quantity: 0,
-                status: SlotStatus::Available->value,
-                lowStock: true,
-                productId: null,
-                productName: null,
-                priceCents: null,
-            ),
-            new SlotProjectionDocument(
-                machineId: $this->machineId,
-                slotCode: '18',
-                capacity: 10,
-                recommendedSlotQuantity: 8,
-                quantity: 5,
-                status: SlotStatus::Available->value,
-                lowStock: false,
-                productId: $this->productId('water'),
-                productName: 'Water',
-                priceCents: 65,
-            ),
-            new SlotProjectionDocument(
-                machineId: $this->machineId,
-                slotCode: '19',
-                capacity: 12,
-                recommendedSlotQuantity: 10,
-                quantity: 3,
-                status: SlotStatus::Available->value,
-                lowStock: true,
-                productId: $this->productId('soda'),
-                productName: 'Soda',
-                priceCents: 150,
-            ),
+        $slotDefinitions = [
+            ['code' => '11', 'quantity' => 6, 'recommended' => 8, 'product' => 'water'],
+            ['code' => '12', 'quantity' => 2, 'recommended' => 8, 'product' => 'soda'],
+            ['code' => '13', 'quantity' => 9, 'recommended' => 9, 'product' => 'juice'],
+            ['code' => '14', 'quantity' => 4, 'recommended' => 6, 'product' => 'water'],
+            ['code' => '15', 'quantity' => 7, 'recommended' => 8, 'product' => 'soda'],
+            ['code' => '16', 'quantity' => 6, 'recommended' => 8, 'product' => 'juice'],
+            ['code' => '17', 'quantity' => 0, 'recommended' => 6, 'product' => null],
+            ['code' => '18', 'quantity' => 5, 'recommended' => 8, 'product' => 'water'],
+            ['code' => '19', 'quantity' => 3, 'recommended' => 10, 'product' => 'soda'],
         ];
 
-        foreach ($slots as $slot) {
-            $this->documentManager->persist($slot);
+        foreach ($slotDefinitions as $definition) {
+            $capacity = 10;
+            $productId = null;
+            $productName = null;
+            $priceCents = null;
+            $status = SlotStatus::Disabled;
+
+            if (null !== $definition['product']) {
+                $productId = $this->productId($definition['product']);
+                $productName = match ($definition['product']) {
+                    'water' => 'Water',
+                    'soda' => 'Soda',
+                    'juice' => 'Orange Juice',
+                    default => null,
+                };
+                $priceCents = match ($definition['product']) {
+                    'water' => 65,
+                    'soda' => 150,
+                    'juice' => 100,
+                    default => null,
+                };
+                $status = SlotStatus::Available;
+            }
+
+            $lowStockThreshold = SlotStatus::Available === $status
+                ? max(1, (int) floor($definition['recommended'] / 2))
+                : 0;
+            $lowStock = SlotStatus::Available === $status && $definition['quantity'] <= $lowStockThreshold;
+
+            $slotDocument = new SlotProjectionDocument(
+                machineId: $this->machineId,
+                slotCode: $definition['code'],
+                capacity: $capacity,
+                recommendedSlotQuantity: $definition['recommended'],
+                quantity: $definition['quantity'],
+                status: $status->value,
+                lowStock: $lowStock,
+                productId: $productId,
+                productName: $productName,
+                priceCents: $priceCents,
+            );
+
+            $this->documentManager->persist($slotDocument);
+
+            $inventorySlot = new InventorySlotDocument(
+                machineId: $this->machineId,
+                code: $definition['code'],
+                capacity: $capacity,
+                quantity: $definition['quantity'],
+                restockThreshold: $lowStockThreshold,
+                status: $status->value,
+                productId: $productId,
+            );
+
+            $this->documentManager->persist($inventorySlot);
         }
     }
 
