@@ -11,7 +11,26 @@
         </button>
       </header>
 
-      <section class="admin-dashboard__section">
+      <nav class="admin-dashboard__tabs">
+        <button
+          type="button"
+          class="admin-dashboard__tab"
+          :class="{ 'admin-dashboard__tab--active': activeTab === 'coins' }"
+          @click="selectTab('coins')"
+        >
+          Coin Inventory
+        </button>
+        <button
+          type="button"
+          class="admin-dashboard__tab"
+          :class="{ 'admin-dashboard__tab--active': activeTab === 'inventory' }"
+          @click="selectTab('inventory')"
+        >
+          Product Inventory
+        </button>
+      </nav>
+
+      <section v-if="activeTab === 'coins'" class="admin-dashboard__section">
         <header>
           <h2>Coin Inventory</h2>
           <p class="admin-dashboard__section-subtitle">Monitor change availability per denomination.</p>
@@ -128,6 +147,10 @@
           </section>
         </div>
       </section>
+
+      <section v-else class="admin-dashboard__section">
+        <AdminInventorySection />
+      </section>
     </section>
   </main>
 </template>
@@ -135,6 +158,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import AdminInventorySection from '@/modules/admin/components/AdminInventorySection.vue'
 import { getCoinInventory, type CoinInventoryResponse } from '@/modules/admin/api/getCoinInventory'
 import { updateCoinInventory, type CoinInventoryOperation } from '@/modules/admin/api/updateCoinInventory'
 import { useAdminAuthStore } from '@/modules/admin/store/useAdminAuthStore'
@@ -150,6 +174,7 @@ const coinInventory = ref<CoinInventoryResponse | null>(null)
 const coinLoading = ref(true)
 const coinRefreshing = ref(false)
 const coinError = ref<string | null>(null)
+const activeTab = ref<'coins' | 'inventory'>('coins')
 
 const coinBalances = computed(() => coinInventory.value?.balances ?? [])
 const insufficientChange = computed(() => coinInventory.value?.insufficientChange ?? false)
@@ -312,6 +337,10 @@ function formatCoin(value: number): string {
     minimumFractionDigits: 2,
   }).format(value / 100)
 }
+
+function selectTab(tab: 'coins' | 'inventory'): void {
+  activeTab.value = tab
+}
 </script>
 
 <style scoped>
@@ -353,6 +382,46 @@ function formatCoin(value: number): string {
 .admin-dashboard__header p {
   margin: 0.35rem 0 0;
   color: #cbd5f5;
+}
+
+.admin-dashboard__logout {
+  border: none;
+  background: rgba(15, 23, 42, 0.8);
+  color: #f8fafc;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.6rem 1.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  transition: transform 0.2s ease-in-out;
+}
+
+.admin-dashboard__logout:hover {
+  transform: translateY(-1px);
+}
+
+.admin-dashboard__tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  background: rgba(12, 20, 35, 0.85);
+  border-radius: 999px;
+  padding: 0.3rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  gap: 0.3rem;
+}
+
+.admin-dashboard__tab {
+  border: none;
+  background: transparent;
+  color: #cbd5f5;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.45rem 1.4rem;
+  transition: background 0.2s ease-in-out;
+}
+
+.admin-dashboard__tab--active {
+  background: #818cf8;
+  color: #0f172a;
 }
 
 .admin-dashboard__section {
@@ -418,51 +487,25 @@ function formatCoin(value: number): string {
   color: #cbd5f5;
   font-size: 0.9rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.coin-table tbody tr:nth-child(odd) {
-  background: rgba(17, 24, 39, 0.45);
 }
 
 .coin-table__footer {
-  margin-top: 1.25rem;
+  margin-top: 1.1rem;
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  align-items: center;
+  gap: 0.5rem;
   color: #cbd5f5;
 }
 
 .coin-table__alert {
-  color: #fbbf24;
-}
-
-.coin-refresh {
-  margin-left: auto;
-  padding: 0.4rem 1rem;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(96, 165, 250, 0.18);
-  color: #e2e8f0;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.coin-refresh:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.coin-refresh:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-  transform: none;
+  color: #fed7aa;
 }
 
 .coin-adjustment {
-  margin-top: 1.75rem;
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
   padding-top: 1.5rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.25);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -471,13 +514,11 @@ function formatCoin(value: number): string {
 .coin-adjustment__header h3 {
   margin: 0;
   font-size: 1.1rem;
-  font-weight: 600;
 }
 
 .coin-adjustment__header p {
   margin: 0.35rem 0 0;
-  color: #9fb7ff;
-  font-size: 0.9rem;
+  color: #cbd5f5;
 }
 
 .coin-adjustment__form {
@@ -487,75 +528,65 @@ function formatCoin(value: number): string {
 }
 
 .coin-adjustment__operation {
+  display: flex;
+  border: none;
+  gap: 0.75rem;
   margin: 0;
   padding: 0;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
 }
 
 .coin-adjustment__operation-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.85rem;
+  flex: 1;
   border-radius: 999px;
-  background: rgba(30, 41, 59, 0.65);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-  user-select: none;
-}
-
-.coin-adjustment__operation-option--active {
-  border-color: rgba(56, 189, 248, 0.8);
-  background: rgba(14, 165, 233, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
 }
 
 .coin-adjustment__operation-option input {
-  accent-color: #38bdf8;
+  pointer-events: none;
+}
+
+.coin-adjustment__operation-option--active {
+  border-color: #818cf8;
+  background: rgba(129, 140, 248, 0.25);
 }
 
 .coin-adjustment__grid {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .coin-adjustment__input {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  background: rgba(17, 24, 39, 0.6);
-  border-radius: 12px;
-  padding: 0.75rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-}
-
-.coin-adjustment__input span {
-  font-size: 0.9rem;
+  gap: 0.35rem;
   color: #cbd5f5;
 }
 
 .coin-adjustment__input input {
-  background: rgba(12, 20, 35, 0.85);
+  border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 10px;
-  padding: 0.5rem 0.65rem;
+  background: rgba(15, 23, 42, 0.85);
   color: #f8fafc;
-  font-size: 1rem;
+  padding: 0.45rem 0.75rem;
 }
 
-.coin-adjustment__input input:disabled {
-  opacity: 0.6;
+.coin-adjustment__input input:focus {
+  outline: none;
+  border-color: #818cf8;
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.35);
 }
 
 .coin-adjustment__feedback {
   margin: 0;
   font-size: 0.9rem;
-  font-weight: 600;
 }
 
 .coin-adjustment__feedback--error {
@@ -568,69 +599,37 @@ function formatCoin(value: number): string {
 
 .coin-adjustment__submit {
   align-self: flex-start;
-  padding: 0.65rem 1.4rem;
   border: none;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(59, 130, 246, 0.45));
-  color: #f8fafc;
+  background: #818cf8;
+  color: #0f172a;
   font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
-}
-
-.coin-adjustment__submit:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 18px 32px rgba(56, 189, 248, 0.35);
+  border-radius: 999px;
+  padding: 0.6rem 1.6rem;
+  transition: background 0.2s ease-in-out;
 }
 
 .coin-adjustment__submit:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
-  opacity: 0.65;
-  box-shadow: none;
-  transform: none;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.admin-dashboard__logout {
-  padding: 0.65rem 1.2rem;
+.coin-refresh {
   border: none;
-  border-radius: 12px;
-  background: rgba(248, 113, 113, 0.2);
-  color: #fecaca;
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
-.admin-dashboard__logout:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 18px 32px rgba(248, 113, 113, 0.35);
-}
-
-@media (max-width: 640px) {
+@media (max-width: 960px) {
   .admin-dashboard {
-    padding: 1.5rem;
+    padding: 1.75rem;
   }
 
   .admin-dashboard__panel {
     padding: 2rem;
-  }
-
-  .coin-table__footer {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
   }
 }
 </style>
