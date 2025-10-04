@@ -6,6 +6,7 @@ namespace App\AdminPanel\Inventory\UI\Http\Controller;
 
 use App\VendingMachine\Inventory\Application\GetSlots\AdminGetSlotsQuery;
 use App\VendingMachine\Inventory\Application\GetSlots\AdminGetSlotsQueryHandler;
+use App\VendingMachine\Inventory\Application\GetSlots\AdminSlotsInventoryResult;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -34,10 +35,7 @@ final class GetSlotInventoryController
         return new JsonResponse($this->serializeResult($result));
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function serializeResult($result): array
+    private function serializeResult(AdminSlotsInventoryResult $result): array
     {
         return [
             'machineId' => $result->machineId,
