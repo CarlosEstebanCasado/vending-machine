@@ -32,3 +32,10 @@ admin_inventory_controllers:
         namespace: App\AdminPanel\Inventory\UI\Http\Controller
     type: attribute
     prefix: /api/admin
+
+admin_product_controllers:
+    resource:
+        path: ../src/AdminPanel/Product/UI/Http/Controller/
+        namespace: App\AdminPanel\Product\UI\Http\Controller
+    type: attribute
+    prefix: /api/admin

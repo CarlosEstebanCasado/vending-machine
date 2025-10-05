@@ -268,6 +268,11 @@ watch(operation, () => {
 watch(productSelectionVisible, (visible) => {
   if (!visible) {
     selectedProductId.value = ''
+    return
+  }
+
+  if (!selectedProductId.value && productOptions.value.length > 0) {
+    selectedProductId.value = productOptions.value[0].id
   }
 })
 

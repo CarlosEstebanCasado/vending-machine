@@ -48,6 +48,10 @@ services:
         bind:
             $defaultMachineId: '%app.machine_id%'
 
+    App\AdminPanel\Product\UI\Http\Controller\:
+        resource: '../src/AdminPanel/Product/UI/Http/Controller/'
+        public: true
+
     App\VendingMachine\CoinInventory\Domain\CoinInventoryRepository: '@App\VendingMachine\CoinInventory\Infrastructure\Mongo\MongoCoinInventoryRepository'
 
     App\VendingMachine\CoinInventory\Domain\Service\ChangeAvailabilityChecker: ~
