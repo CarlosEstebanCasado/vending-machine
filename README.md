@@ -3,6 +3,12 @@
 Full vending machine simulation: customer purchases and administrative management. Vue.js frontend + Symfony API backend. Docker + MongoDB + Redis.
 
 
+## Local Requirements
+- **Docker Engine + Compose**: The entire stack (backend, frontend, databases) runs inside containers. Install Docker Desktop (macOS/Windows) or Docker Engine with the Compose V2 plugin (Linux). Ensure you can execute `docker compose version` successfully.
+- **GNU Make**: CLI helper used for the project shortcuts (`make backend-ci`, `make backend-seed`, etc.). On macOS it ships with the developer tools (`xcode-select --install`); on Linux install via your package manager; on Windows use Git Bash, WSL.
+- **Git** (optional but recommended): to clone the repository and manage branches.
+
+
 ## Getting Started
 1. Clone the repository and copy environment variables:
    ```bash
@@ -14,6 +20,8 @@ Full vending machine simulation: customer purchases and administrative managemen
    ```bash
    ./scripts/setup-admin-jwt.sh
    ```
+   Or via Make (after cloning): `make setup-admin-jwt`
+   
    You can pass a different env file (e.g. `.env.dist`) as the first argument if needed.
 2. Add the local domain entry (run with elevated permissions):
    - macOS/Linux:
@@ -28,166 +36,147 @@ Full vending machine simulation: customer purchases and administrative managemen
    ```bash
    docker compose --profile dev run --rm backend composer install
    ```
+   Or via Make: `make backend-install`
 4. Install frontend dependencies (runs inside Docker):
    ```bash
    docker compose --profile dev run --rm frontend npm install
    ```
+   Or via Make: `make frontend-install`
 5. Launch the development stack with Docker (gateway proxy, Symfony, Vite, MongoDB, Redis):
    ```bash
    docker compose --profile dev up --build -d
    ```
-6. Access the services:
+   Or via Make: `make docker-build-up`
+6. Seed the sample machine state (products, slots, coin inventory) so the UI/API have data:
+   ```bash
+   docker compose --profile dev run --rm backend php bin/console app:seed-machine-state
+   ```
+   Or via Make: `make backend-seed`
+7. Access the services:
    - SPA: http://vendingmachine.test
    - API: http://vendingmachine.test/api/health
    - MongoDB: `mongodb://localhost:27017/vending_machine`
    - Admin login endpoint: http://vendingmachine.test/admin
      - Default credentials (seed data): `admin@vendingmachine.test` / `admin-password`
 
-7. Stop the stack:
+8. Stop the stack:
    ```bash
    docker compose --profile dev down
    ```
+   Or via Make: `make docker-down`
+## Functional Overview
+- **Customer Experience:** Insert coins with live balance feedback, cancel for an automatic return, or approve the vend and receive exact change while browsing a catalog that highlights availability and low-stock/change alerts.
+- **Admin Operations:** Access a backoffice dashboard to watch slot inventory and change coin reserves, curate the product catalog (activate/deactivate, set slot recommendations), and restock or adjust balances with full audit trails. Slot products can only be swapped once their stock hits zero, and neither stock nor pricing can be altered while a customer has a reservation in progress.
 
-**Daily workflow**
-1. Start the stack: `docker compose --profile dev up -d`
-2. Check logs (optional): `docker compose logs -f gateway`
-3. Stop when done: `docker compose --profile dev down`
+## Quality & Tests
+- `make backend-ci`: runs the full backend pipeline inside Docker (composer validate, clean install, lint, PHPStan, PHPUnit with `APP_ENV=test`).
+- `make frontend-ci`: mirrors the frontend flow in the container (`npm ci`, lint, type-check, tests, build).
+- `./scripts/run-backend-ci.sh`: host-friendly mirror of the GitHub Actions workflow without Make.
+- Coverage: PHPUnit exercises the main bounded contexts (machine, sessions, inventory); application tests rely on Mother factories to keep fixtures consistent and expressive.
 
-## Use Cases
-- Insert accepted coins, display current balance, cancel the operation with coin return, or complete the purchase receiving change.
-- Browse the customer-visible catalog: availability, pricing, and stock/change alerts.
-- Authenticate as an administrator and access a dashboard with key metrics (stock levels, coin reserves, sales summary).
-- Manage the catalog as an admin: create, update, deactivate products, adjust pricing, and per-slot limits.
-- Restock products, update change reserves, log manual cash deposits or withdrawals.
-- Review transaction history (sales, refunds, adjustments) with filters by date, product, or user.
-- Switch to service mode to temporarily disable vending, register maintenance, and synchronize critical changes.
-- Run scheduled or automated tasks (reconciliations, report generation, session/log cleanup).
+## Tech Stack & Layout
+- **Backend (`backend/`)** – Symfony 6 + PHP 8.3, organised by bounded contexts (`VendingMachine`, `AdminPanel`, `Shared`). Domain logic lives in `Domain`, use-cases in `Application`, and HTTP/CLI adapters in `UI`.
+- **Frontend (`frontend/`)** – Vue 3 with Vite, featuring Composition API, Pinia stores, and module-based folders (`views`, `components`, `store`, `api`).
+- **Infrastructure (`docker/`)** – Compose profiles for dev/prod, wiring Symfony, Vite, MongoDB, and an Nginx reverse proxy. Redis is provisioned inside the stack but currently unused by the application.
+- **Tooling (`scripts/`, `Makefile`)** – Shell utilities for environment setup, seeding, CI mirroring, plus Make targets (`backend-ci`, `frontend-ci`, `backend-seed`, etc.).
 
-## Local Quality Checks
-- Run backend quality checks inside Docker: `make backend-ci`
-- Run frontend quality checks inside Docker: `make frontend-ci`
-- Mirror the backend GitHub Actions flow with host tooling: `./scripts/run-backend-ci.sh`
+## UI Preview
+| Máquina en espera | Producto seleccionado | Insertando monedas |
+| --- | --- | --- |
+| ![Machine Dashboard](docs/screenshots/vending-machine.png) | ![Slot reservado](docs/screenshots/selected-product.png) | ![Monedas insertadas](docs/screenshots/inserted-coins.png) |
 
-## Utilities
-- Seed Mongo projections for the default machine: `make backend-seed`
-- Restart the frontend container: `make frontend-restart`
+| Compra completada | Devolución de monedas | Producto sin stock |
+| --- | --- | --- |
+| ![Vend completado](docs/screenshots/purchase-completed.png) | ![Devolviendo monedas](docs/screenshots/returning-coins.png) | ![Producto no disponible](docs/screenshots/product-unavailable.png) |
 
-## Domain Models
-- `Product`: identity, name, price, status, slot metadata, inventory counts; emits restock/out-of-stock events.
-- `Money` and derivatives (`Coin`, `MoneyBalance`, `CoinBundle`): value objects representing accepted denominations and safe arithmetic.
-- `Inventory`/`Slot`: binds products to physical compartments, tracking max capacity and current quantity. The `restock_threshold` marks the quantity at which the slot should be considered low on product so operations can schedule a replenishment before it runs out.
-- `CoinInventory`: aggregate that maintains per-denomination counts and change-dispense/restock rules.
-  - The admin dashboard shows `insufficient change` when the backend cannot compose every multiple of 5 cts up to 95 cts (or the highest amount afforded by the available change coins). The heuristic rebuilds the change plan after each vend or manual adjustment so the flag always reflects the latest inventory snapshot.
-- `VendingSession`: tracks the ongoing interaction (inserted coins, selected product, transactional state); persisted from the first user action, closed with `completed`, `cancelled`, or `timeout`, linked to the resulting `Transaction`, and purged only through retention policies.
-- `Transaction`: aggregate for completed operations (sales, refunds, admin adjustments) with audit metadata.
-- `AdminUser`: aggregate for authenticated console accounts with credentials, permissions, and active token/session linkage.
-- `MachineState`: projection summarizing global machine status (stock, change, operational flags) for quick reads.
-- `MaintenanceLog`: record of service interventions, notes, and manual reconciliations.
-- Adapters/DTOs (MongoDB document mappers, API payloads, event payloads) bridging the domain with infrastructure.
+| Login admin | Inventario de productos | Inventario de monedas |
+| --- | --- | --- |
+| ![Login admin](docs/screenshots/login.png) | ![Inventario admin](docs/screenshots/admin-product-inventory.png) | ![Inventario monedas](docs/screenshots/admin-coin-inventory.png) |
+
+## FAQ & Known Gaps
+- **Are transactions stored long term?** Not yet. The API responds with the session summary and updates dashboards, but historical persistence/reporting remains on the roadmap.
+- **Why ship Redis if it is unused?** It is provisioned for future caching/event work. The current runtime does not read or write to Redis.
+- **How do admin adjustments behave with active purchases?** Slots lock while a customer has a selection. Stock or product swaps only resume once the purchase completes or the selection is cleared, and slot products can be reassigned only after their stock reaches zero.
 
 ## Security & Resilience
-- Centralize secrets in environment variables (backed by `.env.dist`).
-- Enforce rate limiting, input validation, and strict CORS policies on public API endpoints.
-- Log security-sensitive events (admin logins, configuration changes) with traceability and basic alerting.
-- Handle backend/Mongo outages gracefully (timeouts, controlled retries, clear frontend messaging).
-- Configure automatic expiration of vending sessions and ensure coin returns on errors.
-- Admin API tokens use HMAC-signed JWTs (HS256). Configure `ADMIN_JWT_SECRET`, `ADMIN_JWT_TTL`, and optionally `ADMIN_JWT_ISSUER` in your environment.
+- Secrets (APP, Mongo, JWT) live in environment variables (`.env.dist` documents the defaults); production deployments override them securely.
+- Admin authentication is stateless: the `/api/admin/login` endpoint issues HS256 JWTs via `JwtAdminTokenService`, and the `AdminJwtAuthenticator` validates signature, expiry, and required claims on every admin request.
+- Passwords leverage Symfony's password hashers; inactive admins are rejected before issuing tokens.
+- JSON errors are normalized through `JsonExceptionSubscriber`, so domain/validation issues surface as structured 4xx/5xx responses.
+- Inventory invariants prevent accidental race conditions: slot stock and coin reserves cannot be edited while a customer reservation is active, and a slot swap only happens once the previous product is exhausted.
 
-## Internationalization
-- Prepare the frontend with i18n infrastructure (base translation files, currency/number helpers).
-- Avoid hardcoded strings in backend responses to ease locale/currency adjustments.
-- Document how to add new locales and keep translation keys aligned across frontend and backend.
+## Domain Models
+- `Money` & value objects (`Coin`, `CoinBundle`, `MoneyBalance`): safe arithmetic around accepted denominations, feeding balance tracking and change planning.
+- `Product`: immutable identity with mutable SKU/name/status/price/recommended slot quantity. Application services enforce that repricing or swapping only happens when no active reservation is holding the slot.
+- `InventorySlot`: couples a product to a physical compartment with capacity, quantity, restock threshold, and status (`available`, `reserved`, `disabled`). Guards ensure quantities never exceed capacity and block product changes while stock remains.
+- `CoinInventory`: manages available vs. reserved change bundles. Supports deposit/withdraw/reserve flows and greedy change planning; when the greedy plan fails, the UI surfaces the “insufficient change” warning.
+- `VendingSession`: orchestrates customer interactions (collecting → ready → dispensing/cancelled/timeout) while keeping inserted coins, balance, selected product, change plan, and close reason internally consistent.
+- `AdminUser`: models backoffice accounts (id, email, hashed password, roles, active flag). Login issues HS256 JWTs via `JwtAdminTokenService`, and the authenticator validates signature, expiry, and claims on each request.
 
 ## MongoDB Schema
-All monetary amounts are stored in cents (`int32`) to avoid precision issues.
+All monetary amounts are stored in cents (`int32`). Collections managed by Doctrine ODM:
 
 ### Collection: `products`
-- `_id` (`ObjectId`)
-- `sku` (`string`) — external unique identifier
+- `_id` (`string`) — product UUID
+- `sku` (`string`)
 - `name` (`string`)
 - `price_cents` (`int32`)
-- `status` (`string`) — `active`, `inactive`
-- `recommended_slot_quantity` (`int32`) — target stock per slot when planning inventory
+- `status` (`string`) — `active` | `inactive`
+- `recommended_slot_quantity` (`int32`)
 - `created_at` / `updated_at` (`Date`)
-- Indexes: `{ sku: 1 }` unique, `{ status: 1 }`
 
 ### Collection: `inventory_slots`
-- `_id` (`ObjectId`)
-- `slot_code` (`string`) — physical label (e.g., "11")
-- `product_id` (`ObjectId|null`) — current product reference
+- `_id` (`string`) — composite `machineId-slotCode`
+- `machineId` (`string`)
+- `code` (`string`)
 - `capacity` (`int32`)
 - `quantity` (`int32`)
-- `restock_threshold` (`int32`)
-- `status` (`string`) — `available`, `reserved`, `disabled`
-- `updated_at` (`Date`)
-- Indexes: `{ slot_code: 1 }` unique, `{ product_id: 1 }`
+- `restockThreshold` (`int32`)
+- `status` (`string`) — `available` | `reserved` | `disabled`
+- `productId` (`string|null`)
+- `createdAt` / `updatedAt` (`Date`)
 
 ### Collection: `coin_reserves`
-- `_id` (`ObjectId`)
-- `denomination_cents` (`int32`) — 5, 10, 25, 100
+- `_id` (`string`) — machine id
+- `available` (`hash`) — e.g. `{100: 5, 25: 10}`
+- `reserved` (`hash`)
+- `insufficientChange` (`bool`)
+- `updatedAt` (`Date`)
+
+### Collection: `machine_sessions`
+- `_id` (`string`) — machine id
+- `sessionId` (`string|null`)
+- `state` (`string`) — mirrors `VendingSessionState`
+- `balanceCents` (`int32`)
+- `insertedCoins` (`hash`)
+- `selectedProductId` (`string|null`)
+- `selectedSlotCode` (`string|null`)
+- `changePlan` (`hash|null`)
+- `updatedAt` (`Date`)
+
+### Collection: `machine_slots`
+- `_id` (`string`) — `machineId-slotCode`
+- `machineId` (`string`)
+- `slotCode` (`string`)
+- `productId` (`string|null`)
+- `productName` (`string|null`)
+- `priceCents` (`int32|null`)
 - `quantity` (`int32`)
-- `reserved_quantity` (`int32`) — coins allocated for pending change
-- `updated_at` (`Date`)
-- Indexes: `{ denomination_cents: 1 }` unique
+- `capacity` (`int32`)
+- `status` (`string`)
+- `lowStock` (`bool`)
+- `recommendedSlotQuantity` (`int32`)
 
-### Collection: `vending_sessions`
-- `_id` (`ObjectId`)
-- `state` (`string`) — `collecting`, `ready`, `dispensing`, `cancelled`, `timeout`
-- `inserted_coins` (array of `{denomination_cents:int32, quantity:int32}`)
-- `balance_cents` (`int32`)
-- `selected_product_id` (`ObjectId|null`)
-- `change_plan` (array of `{denomination_cents:int32, quantity:int32}`)
-- `result_transaction_id` (`ObjectId|null`)
-- `started_at` (`Date`)
-- `updated_at` / `closed_at` (`Date|null`)
-- `close_reason` (`string|null`)
-- Indexes: `{ state: 1, started_at: -1 }`, optional TTL on `closed_at`
-
-### Collection: `transactions`
-- `_id` (`ObjectId`)
-- `type` (`string`) — `vend`, `return`, `restock`, `adjustment`
-- `session_id` (`ObjectId|null`)
-- `items` (array of `{product_id:ObjectId, quantity:int32, unit_price_cents:int32}`)
-- `total_paid_cents` (`int32`)
-- `change_dispensed` (array of `{denomination_cents:int32, quantity:int32}`)
-- `admin_user_id` (`ObjectId|null`)
-- `status` (`string`) — `completed`, `failed`
-- `metadata` (`object`) — additional info (tracking, notes)
-- `created_at` (`Date`)
-- Indexes: `{ type: 1, created_at: -1 }`, `{ session_id: 1 }`, `{ admin_user_id: 1 }`
+### Collection: `machine_coin_inventory`
+- `_id` (`string`) — machine id
+- `available` (`hash`)
+- `reserved` (`hash`)
+- `insufficientChange` (`bool`)
+- `updatedAt` (`Date`)
 
 ### Collection: `admin_users`
 - `_id` (`ObjectId`)
 - `email` (`string`)
-- `password_hash` (`string`)
-- `roles` (array of `string`) — default `['admin']`
-- `status` (`string`) — `active`, `suspended`
-- `last_login_at` (`Date|null`)
-- `created_at` / `updated_at` (`Date`)
-- Indexes: `{ email: 1 }` unique, `{ status: 1 }`
-
-### Collection: `maintenance_logs`
-- `_id` (`ObjectId`)
-- `admin_user_id` (`ObjectId`)
-- `entry_type` (`string`) — `maintenance`, `reconciliation`, `note`
-- `description` (`string`)
-- `attachments` (array of `string`)
-- `created_at` (`Date`)
-- Indexes: `{ admin_user_id: 1, created_at: -1 }`
-
-### Infra Collection: `audit_logs`
-- `_id` (`ObjectId`)
-- `event` (`string`) — `admin.login`, `config.update`, `cash.adjust`
-- `actor_id` (`ObjectId|null`)
-- `session_id` (`ObjectId|null`)
-- `payload` (`object`)
-- `ip_address` (`string|null`)
-- `user_agent` (`string|null`)
-- `created_at` (`Date`)
-- Indexes: `{ event: 1, created_at: -1 }`, `{ actor_id: 1, created_at: -1 }`
-
-## Docker Tooling
-- `docker-compose.yml` launches the development stack (gateway proxy on port 80, Symfony dev server, Vite dev server, MongoDB, Redis) via `docker compose --profile dev up --build -d`. Before the first `up`, install dependencies with `docker compose --profile dev run --rm backend composer install` and `docker compose --profile dev run --rm frontend npm install`.
-- `docker-compose.prod.yml` produces production images: a PHP 8.4 runtime serving the API on port `8080`, an Nginx-based SPA container, plus MongoDB and Redis. Start with `docker compose -f docker-compose.prod.yml up --build -d`.
-- Backend and frontend images are multi-stage (`docker/backend/Dockerfile`, `docker/frontend/Dockerfile`) so CI can build optimized artifacts (`backend-prod`, `frontend-prod`).
-- `.dockerignore` prevents host `vendor/`, `node_modules/`, and Git metadata from bloating the build context.
+- `passwordHash` (`string`)
+- `roles` (`array<string>`) — default `['admin']`
+- `active` (`bool`)
