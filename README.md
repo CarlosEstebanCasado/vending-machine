@@ -15,6 +15,8 @@ Full vending machine simulation: customer purchases and administrative managemen
    git clone git@github.com:CarlosEstebanCasado/vending-machine.git
    cd vending-machine
    cp .env.dist .env
+   cd backend
+   cp .env.dev .env
    ```
    Generate admin JWT secrets (optional but recommended):
    ```bash
