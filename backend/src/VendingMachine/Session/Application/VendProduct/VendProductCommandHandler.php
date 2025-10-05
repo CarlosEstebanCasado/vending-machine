@@ -239,6 +239,9 @@ final class VendProductCommandHandler
             $slotAggregate->removeStock(1);
             if ($slotAggregate->quantity()->isZero()) {
                 $slotAggregate->disable();
+                if ($slotAggregate->hasProductAssigned()) {
+                    $slotAggregate->clearProduct();
+                }
             } else {
                 $slotAggregate->markAvailable();
             }
