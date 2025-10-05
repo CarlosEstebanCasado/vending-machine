@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { adjustSlotInventory, type AdjustSlotInventoryOperation } from '@/modules/admin/api/adjustSlotInventory'
 import { getSlotInventory, type AdminSlotInventoryItem } from '@/modules/admin/api/getSlotInventory'
+import { getAdminProducts, type AdminProductOption } from '@/modules/admin/api/getProducts'
 
 interface AdminInventoryFilters {
   status: 'all' | 'available' | 'reserved' | 'disabled'
@@ -11,6 +12,7 @@ interface AdminInventoryFilters {
 interface AdminInventoryState {
   machineId: string | null
   slots: AdminSlotInventoryItem[]
+  products: AdminProductOption[]
   loading: boolean
   error: string | null
   selectedSlotCode: string | null
@@ -24,6 +26,7 @@ export const useAdminInventoryStore = defineStore('adminInventory', {
   state: (): AdminInventoryState => ({
     machineId: null,
     slots: [],
+    products: [],
     loading: false,
     error: null,
     selectedSlotCode: null,
@@ -68,24 +71,8 @@ export const useAdminInventoryStore = defineStore('adminInventory', {
 
       return state.slots.find((slot) => slot.code === state.selectedSlotCode) ?? null
     },
-    productOptions(state): Array<{ id: string; name: string; priceCents: number | null }> {
-      const map = new Map<string, { id: string; name: string; priceCents: number | null }>()
-
-      for (const slot of state.slots) {
-        if (!slot.productId || !slot.productName) {
-          continue
-        }
-
-        if (!map.has(slot.productId)) {
-          map.set(slot.productId, {
-            id: slot.productId,
-            name: slot.productName,
-            priceCents: slot.priceCents,
-          })
-        }
-      }
-
-      return Array.from(map.values())
+    productOptions(state): AdminProductOption[] {
+      return state.products
     },
     lowStockCount(state): number {
       return state.slots.filter((slot) => slot.needsRestock).length
@@ -104,6 +91,8 @@ export const useAdminInventoryStore = defineStore('adminInventory', {
         this.machineId = response.machineId
         this.slots = response.slots
 
+        await this.fetchProducts()
+
         if (!this.selectedSlotCode && this.slots.length > 0) {
           this.selectedSlotCode = this.slots[0].code
         }
@@ -112,6 +101,15 @@ export const useAdminInventoryStore = defineStore('adminInventory', {
         this.error = error instanceof Error ? error.message : 'Unable to load slot inventory.'
       } finally {
         this.loading = false
+      }
+    },
+    async fetchProducts(): Promise<void> {
+      try {
+        const response = await getAdminProducts()
+        this.products = response.products
+      } catch (error) {
+        console.error('Failed to load product catalog', error)
+        this.products = []
       }
     },
     selectSlot(code: string): void {
